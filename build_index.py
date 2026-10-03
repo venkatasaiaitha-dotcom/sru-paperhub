@@ -734,7 +734,7 @@ html_content = '''<!DOCTYPE html>
         <form onsubmit="handleAdminLogin(event)" class="space-y-3">
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1">Admin Password</label>
-            <input id="admin-password-input" type="password" required placeholder="Enter password (default: admin123)" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+            <input id="admin-password-input" type="password" required placeholder="Enter Admin Password" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
           </div>
           <button type="submit" class="w-full py-2.5 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm">
             Login as Administrator
@@ -1038,11 +1038,27 @@ html_content = '''<!DOCTYPE html>
       document.getElementById('admin-modal').style.display = 'none';
     }
 
+    const ADMIN_CREDENTIAL_PASS = "student@2026";
+
     async function handleAdminLogin(event) {
       event.preventDefault();
-      const pwd = document.getElementById('admin-password-input').value;
-      const res = await apiCall('/api/admin/login', 'POST', { password: pwd });
-      if (res && res.success) {
+      const pwd = document.getElementById('admin-password-input').value.trim();
+      let isValid = false;
+
+      // 1. Direct validation check (works on both local server and static cloud deployments)
+      if (pwd === ADMIN_CREDENTIAL_PASS) {
+        isValid = true;
+      } else {
+        // 2. Fallback check with server
+        try {
+          const res = await apiCall('/api/admin/login', 'POST', { password: pwd });
+          if (res && res.success) {
+            isValid = true;
+          }
+        } catch(e) {}
+      }
+
+      if (isValid) {
         isAdmin = true;
         currentUser = {
           rollNo: "ADMIN",
@@ -1055,7 +1071,8 @@ html_content = '''<!DOCTYPE html>
         openAdminModal();
         initDashboard();
       } else {
-        alert('Invalid Admin Password. Default is admin123');
+        showToast('Invalid Admin Password. Please try again.', 'error');
+        alert('Invalid Admin Password. Please enter the correct password.');
       }
     }
 
@@ -1069,7 +1086,7 @@ html_content = '''<!DOCTYPE html>
         } catch(e) {}
       }
 
-      await apiCall('/api/admin/announcement', 'POST', { text, password: 'admin123' });
+      await apiCall('/api/admin/announcement', 'POST', { text, password: ADMIN_CREDENTIAL_PASS });
       document.getElementById('announcement-text').textContent = text;
       showToast('Announcement published live to all students!', 'success');
     }
@@ -1090,7 +1107,7 @@ html_content = '''<!DOCTYPE html>
       }
 
       // Delete from server
-      await apiCall('/api/admin/delete', 'POST', { paperId, password: 'admin123' });
+      await apiCall('/api/admin/delete', 'POST', { paperId, password: ADMIN_CREDENTIAL_PASS });
       showToast('Question paper deleted', 'info');
       await fetchPapers();
     }
@@ -1108,7 +1125,7 @@ html_content = '''<!DOCTYPE html>
         }
       }
 
-      await apiCall('/api/admin/clear-all', 'POST', { password: 'admin123' });
+      await apiCall('/api/admin/clear-all', 'POST', { password: ADMIN_CREDENTIAL_PASS });
       showToast('All question papers have been cleared', 'info');
       await fetchPapers();
     }
