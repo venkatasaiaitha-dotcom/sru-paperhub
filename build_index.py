@@ -10,7 +10,7 @@ html_content = '''<!DOCTYPE html>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Supabase JS Client for Cloud Database & Storage -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="/supabase_config.js"></script>
+  <script src="./supabase_config.js"></script>
   <script>
     tailwind.config = {
       theme: {
@@ -824,9 +824,9 @@ html_content = '''<!DOCTYPE html>
 
     // Initialize Supabase Client
     function initSupabase() {
-      // 1. Check window.SUPABASE_URL (from supabase_config.js)
-      let url = window.SUPABASE_URL || '';
-      let key = window.SUPABASE_ANON_KEY || '';
+      // 1. Check window.SUPABASE_URL (from supabase_config.js) or configured project
+      let url = window.SUPABASE_URL || 'https://dcjhszgcjlkrvjdlnwhh.supabase.co';
+      let key = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjamhzemdjbGprcnZqZGxud2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5OTg4NjAsImV4cCI6MjEwNjU3NDg2MH0.jg8nPJueBUJmbv7KyQynyyVgmTsRWUC-ivu0L7sJdb4';
 
       // 2. Check localStorage override
       const savedConfig = localStorage.getItem('sru_supabase_config');
@@ -1019,9 +1019,12 @@ html_content = '''<!DOCTYPE html>
         if (savedConfig) {
           try {
             const cfg = JSON.parse(savedConfig);
-            document.getElementById('cfg-supabase-url').value = cfg.url || '';
-            document.getElementById('cfg-supabase-key').value = cfg.key || '';
+            document.getElementById('cfg-supabase-url').value = cfg.url || window.SUPABASE_URL || '';
+            document.getElementById('cfg-supabase-key').value = cfg.key || window.SUPABASE_ANON_KEY || '';
           } catch(e) {}
+        } else {
+          document.getElementById('cfg-supabase-url').value = window.SUPABASE_URL || 'https://dcjhszgcjlkrvjdlnwhh.supabase.co';
+          document.getElementById('cfg-supabase-key').value = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjamhzemdjbGprcnZqZGxud2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5OTg4NjAsImV4cCI6MjEwNjU3NDg2MH0.jg8nPJueBUJmbv7KyQynyyVgmTsRWUC-ivu0L7sJdb4';
         }
         document.getElementById('admin-notice-input').value = document.getElementById('announcement-text').textContent;
       } else {
