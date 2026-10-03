@@ -823,7 +823,7 @@
     // Initialize Supabase Client
     function initSupabase() {
       // 1. Check window.SUPABASE_URL (from supabase_config.js) or configured project
-      let url = window.SUPABASE_URL || 'https://dcjhszgcjlkrvjdlnwhh.supabase.co';
+      let url = window.SUPABASE_URL || 'https://dcjhszgcljkrvjdlnwhh.supabase.co';
       let key = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjamhzemdjbGprcnZqZGxud2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5OTg4NjAsImV4cCI6MjEwNjU3NDg2MH0.jg8nPJueBUJmbv7KyQynyyVgmTsRWUC-ivu0L7sJdb4';
 
       // 2. Check localStorage override
@@ -1021,7 +1021,7 @@
             document.getElementById('cfg-supabase-key').value = cfg.key || window.SUPABASE_ANON_KEY || '';
           } catch(e) {}
         } else {
-          document.getElementById('cfg-supabase-url').value = window.SUPABASE_URL || 'https://dcjhszgcjlkrvjdlnwhh.supabase.co';
+          document.getElementById('cfg-supabase-url').value = window.SUPABASE_URL || 'https://dcjhszgcljkrvjdlnwhh.supabase.co';
           document.getElementById('cfg-supabase-key').value = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjamhzemdjbGprcnZqZGxud2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5OTg4NjAsImV4cCI6MjEwNjU3NDg2MH0.jg8nPJueBUJmbv7KyQynyyVgmTsRWUC-ivu0L7sJdb4';
         }
         document.getElementById('admin-notice-input').value = document.getElementById('announcement-text').textContent;
@@ -1642,9 +1642,28 @@
         try {
           submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Uploading to Supabase Cloud...</span>';
           
-          // Convert base64 data URL to Blob
-          const res = await fetch(selectedImageBase64);
-          const blob = await res.blob();
+          // Convert base64 data URL to Blob reliably in memory without network fetch
+          let blob = null;
+          try {
+            const parts = selectedImageBase64.split(',');
+            const mimeMatch = parts[0].match(/:(.*?);/);
+            const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+            const byteCharacters = atob(parts[1]);
+            const byteArrays = [];
+            const sliceSize = 1024;
+            for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+              const slice = byteCharacters.slice(offset, offset + sliceSize);
+              const byteNumbers = new Array(slice.length);
+              for (let i = 0; i < slice.length; i++) {
+                byteNumbers[i] = slice.charCodeAt(i);
+              }
+              byteArrays.push(new Uint8Array(byteNumbers));
+            }
+            blob = new Blob(byteArrays, { type: mimeType });
+          } catch(convErr) {
+            const res = await fetch(selectedImageBase64);
+            blob = await res.blob();
+          }
           const fileName = `paper_${Date.now()}_${code.toLowerCase()}.jpg`;
 
           // Upload to Supabase Storage Bucket 'paper-images'
