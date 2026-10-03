@@ -1,0 +1,2 @@
+# Python Standard Library only (http.server, socketserver, json, urllib, base64)
+# No external pip dependencies needed for Python server

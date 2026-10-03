@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.env
+.venv/
+env/
+
+# Scratch & temporary logs
+*.log
+tests/
+test_*.py
+check_*.py
+dump.html

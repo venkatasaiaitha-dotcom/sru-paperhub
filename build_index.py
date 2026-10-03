@@ -1,0 +1,1738 @@
+import os
+
+html_content = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SR University PaperHub - Question Paper Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Supabase JS Client for Cloud Database & Storage -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/supabase_config.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brandBlueDark: '#1e3a8a',
+            brandBlue: '#2563eb',
+            brandBlueHover: '#1d4ed8',
+            brandBlueLight: '#eff6ff',
+            brandBlueBorder: '#bfdbfe',
+            brandSlate: '#0f172a',
+            brandMuted: '#64748b'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #0f172a; }
+    .font-mono-code { font-family: 'JetBrains Mono', monospace; }
+    
+    /* Clean custom scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased bg-slate-50 text-slate-900">
+
+  <!-- ================= 1. AUTHENTICATION VIEW (ALWAYS FIRST) ================= -->
+  <div id="auth-view" class="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-slate-50">
+    <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
+      <!-- SR University Crest / Icon -->
+      <div class="w-16 h-16 bg-brandBlueDark text-white rounded-2xl flex items-center justify-center mx-auto shadow-md border border-blue-900">
+        <i class="fa-solid fa-building-columns text-2xl"></i>
+      </div>
+      
+      <h1 class="mt-4 text-2xl font-bold tracking-tight text-brandBlueDark">
+        SR UNIVERSITY
+      </h1>
+      <p class="text-xs uppercase tracking-widest text-brandBlue font-semibold mt-0.5">
+        PaperHub • Question Papers
+      </p>
+      <p class="mt-2 text-xs text-slate-500">
+        Official exam papers for semester &amp; mid-term examinations
+      </p>
+    </div>
+
+    <div class="mt-6 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
+      <div class="bg-white py-8 px-6 sm:px-8 shadow-sm rounded-2xl border border-slate-200">
+        
+        <!-- Auth Tabs: Sign In / Registration -->
+        <div class="flex border-b border-slate-200 mb-6 text-xs font-semibold">
+          <button id="auth-tab-login" onclick="setAuthTab('login')" class="flex-1 pb-3 border-b-2 border-brandBlue text-brandBlue font-bold transition">
+            Student Sign In
+          </button>
+          <button id="auth-tab-register" onclick="setAuthTab('register')" class="flex-1 pb-3 text-slate-400 hover:text-slate-600 transition">
+            New Registration
+          </button>
+        </div>
+
+        <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+          <!-- Full Name (Only for Registration) -->
+          <div id="field-name" style="display: none;">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Full Name *</label>
+            <input id="login-name" type="text" placeholder="Enter your full name" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+          </div>
+
+          <!-- Enrollment Number (Replaced Student Roll Number, No default) -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Enrollment Number *</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <i class="fa-solid fa-id-card text-xs"></i>
+              </span>
+              <input id="login-roll" type="text" required placeholder="e.g. 21SR1A0501" value="" class="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono-code uppercase text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+            </div>
+          </div>
+
+          <!-- College Email Address (Replaced Campus Email Address, No default) -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">College Email Address *</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <i class="fa-solid fa-envelope text-xs"></i>
+              </span>
+              <input id="login-email" type="email" required placeholder="e.g. student@sru.edu.in" value="" class="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+            </div>
+          </div>
+
+          <!-- Engineering Branch -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Engineering Branch *</label>
+            <select id="login-branch" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+              <option value="CSE">Computer Science &amp; Engineering (CSE)</option>
+              <option value="AIML">Artificial Intelligence &amp; ML (AIML)</option>
+              <option value="AIDS">AI &amp; Data Science (AIDS)</option>
+              <option value="ECE">Electronics &amp; Communication (ECE)</option>
+              <option value="EEE">Electrical &amp; Electronics (EEE)</option>
+              <option value="MECH">Mechanical Engineering (MECH)</option>
+              <option value="CIVIL">Civil Engineering (CIVIL)</option>
+            </select>
+          </div>
+
+          <!-- Semester -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Current Semester *</label>
+            <select id="login-sem" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+              <option value="1">Semester 1 (I Year)</option>
+              <option value="2">Semester 2 (I Year)</option>
+              <option value="3">Semester 3 (II Year)</option>
+              <option value="4">Semester 4 (II Year)</option>
+              <option value="5" selected>Semester 5 (III Year)</option>
+              <option value="6">Semester 6 (III Year)</option>
+              <option value="7">Semester 7 (IV Year)</option>
+              <option value="8">Semester 8 (IV Year)</option>
+            </select>
+          </div>
+
+          <button id="auth-submit-btn" type="submit" class="w-full py-3 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center justify-center space-x-2">
+            <span>Continue to Dashboard</span>
+            <i class="fa-solid fa-arrow-right text-xs"></i>
+          </button>
+        </form>
+
+        <!-- Admin Portal Access Option -->
+        <div class="mt-6 pt-4 border-t border-slate-100 text-center flex items-center justify-between text-xs text-slate-500">
+          <button type="button" onclick="openAdminModal()" class="hover:text-brandBlue font-medium transition inline-flex items-center space-x-1.5">
+            <i class="fa-solid fa-lock text-[11px]"></i>
+            <span>Faculty &amp; Admin Access</span>
+          </button>
+          
+          <div id="auth-cloud-status" class="inline-flex items-center space-x-1 text-[11px]">
+            <span class="w-2 h-2 rounded-full bg-slate-300"></span>
+            <span>Checking Cloud...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 2. MAIN APPLICATION (NAVBAR + DASHBOARD) ================= -->
+  <div id="app-view" style="display: none;" class="min-h-screen flex flex-col">
+    
+    <!-- Top Navigation Bar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex justify-between items-center h-16">
+          
+          <!-- Logo & Brand Title -->
+          <div class="flex items-center space-x-3 cursor-pointer" onclick="showDashboardView()">
+            <div class="w-10 h-10 bg-brandBlueDark text-white rounded-xl flex items-center justify-center shadow-sm">
+              <i class="fa-solid fa-building-columns text-lg"></i>
+            </div>
+            <div>
+              <div class="text-sm font-bold text-brandBlueDark tracking-tight flex items-center space-x-2">
+                <span>SR UNIVERSITY</span>
+                <span class="text-slate-300">|</span>
+                <span class="text-brandBlue text-xs font-semibold">PAPERHUB</span>
+              </div>
+              <p class="text-[10px] text-slate-500 font-medium">Exam Papers &amp; Question Bank</p>
+            </div>
+          </div>
+
+          <!-- Center Navigation Links -->
+          <nav class="hidden md:flex items-center space-x-1">
+            <button id="nav-btn-dashboard" onclick="showDashboardView()" class="px-3 py-2 rounded-lg text-xs font-semibold bg-brandBlueLight text-brandBlue border border-brandBlueBorder">
+              <i class="fa-solid fa-layer-group mr-1.5"></i> Dashboard
+            </button>
+            <button id="nav-btn-upload" onclick="openUploadModal()" class="px-3 py-2 rounded-lg text-xs font-semibold text-slate-600 hover:text-brandBlue hover:bg-slate-50 transition">
+              <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i> Upload Paper Image
+            </button>
+          </nav>
+
+          <!-- Right Student Profile, Admin Badge & Logout -->
+          <div class="flex items-center space-x-3">
+            <button type="button" onclick="openUploadModal()" class="hidden sm:inline-flex items-center space-x-1.5 px-3 py-2 bg-brandBlue hover:bg-brandBlueHover text-white rounded-lg text-xs font-bold shadow-sm transition">
+              <i class="fa-solid fa-plus text-xs"></i>
+              <span>Upload Paper Image</span>
+            </button>
+
+            <!-- Admin Badge (Shown in Admin Mode) -->
+            <button type="button" id="admin-badge" style="display: none;" onclick="openAdminModal()" class="items-center space-x-1.5 bg-amber-50 text-amber-800 border border-amber-300 px-2.5 py-1 rounded-lg text-[11px] font-bold">
+              <i class="fa-solid fa-shield-halved text-xs"></i>
+              <span>Admin Panel</span>
+            </button>
+
+            <!-- Cloud Database Indicator -->
+            <div id="nav-cloud-pill" class="hidden sm:inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200" title="Database status">
+              <span id="nav-cloud-dot" class="w-2 h-2 rounded-full bg-slate-400"></span>
+              <span id="nav-cloud-label">Local Mode</span>
+            </div>
+
+            <!-- Student Profile Badge -->
+            <div id="student-badge" class="flex items-center space-x-2 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200">
+              <div class="w-6 h-6 rounded-full bg-brandBlueDark text-white flex items-center justify-center text-[10px] font-bold">
+                <i class="fa-solid fa-user-graduate"></i>
+              </div>
+              <div class="text-left hidden sm:block">
+                <div id="nav-student-roll" class="text-xs font-bold font-mono-code text-slate-800">21SR1A0501</div>
+                <div id="nav-student-branch" class="text-[10px] text-slate-500 font-medium">CSE • Sem 5</div>
+              </div>
+            </div>
+
+            <!-- Sign Out Button -->
+            <button type="button" onclick="handleLogout()" title="Sign Out (Back to Login)" class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition flex items-center space-x-1">
+              <i class="fa-solid fa-right-from-bracket text-sm"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      
+      <!-- ================= DASHBOARD VIEW ================= -->
+      <section id="view-dashboard">
+        
+        <!-- Campus Announcement Banner -->
+        <div id="announcement-banner" class="mb-5 p-4 rounded-xl bg-blue-50 border border-brandBlueBorder flex items-start justify-between gap-3 text-xs">
+          <div class="flex items-start space-x-3">
+            <div class="w-6 h-6 rounded-full bg-brandBlue text-white flex items-center justify-center shrink-0 mt-0.5">
+              <i class="fa-solid fa-bullhorn text-[10px]"></i>
+            </div>
+            <div>
+              <span class="font-bold text-brandBlueDark mr-1">Campus Announcement:</span>
+              <span id="announcement-text" class="text-slate-700">Browse official past exam question papers or upload scanned papers to share with classmates.</span>
+            </div>
+          </div>
+          <button id="btn-edit-announcement" style="display: none;" onclick="editAnnouncementPrompt()" class="shrink-0 text-brandBlue hover:underline font-semibold text-[11px]">
+            Edit Notice
+          </button>
+        </div>
+
+        <!-- Welcome Banner -->
+        <div class="bg-gradient-to-r from-blue-900 to-blue-800 text-white rounded-2xl p-6 sm:p-8 mb-6 shadow-sm border border-blue-950">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <div class="inline-flex items-center space-x-2 px-2.5 py-1 bg-blue-800/80 rounded-full border border-blue-700 text-[11px] font-medium text-blue-100 mb-2">
+                <i class="fa-solid fa-circle-check text-xs"></i>
+                <span>Verified Exam Papers</span>
+              </div>
+              <h2 id="welcome-heading" class="text-xl sm:text-2xl font-bold tracking-tight">
+                Welcome, Student
+              </h2>
+              <p id="welcome-subheading" class="text-xs sm:text-sm text-blue-200 mt-1 max-w-2xl">
+                Browse, preview, and download past semester and mid-term examination question paper images.
+              </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button type="button" onclick="openUploadModal()" class="px-4 py-2.5 bg-white text-brandBlueDark hover:bg-blue-50 rounded-xl text-xs font-bold shadow-sm transition flex items-center space-x-2">
+                <i class="fa-solid fa-file-arrow-up"></i>
+                <span>Upload Question Paper</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metrics Overview (Replaced "Archived Papers" with "Available Papers") -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-medium text-slate-500">Available Papers</span>
+              <div class="w-8 h-8 rounded-lg bg-blue-50 text-brandBlue flex items-center justify-center">
+                <i class="fa-solid fa-file-invoice text-sm"></i>
+              </div>
+            </div>
+            <div id="stat-total-papers" class="text-2xl font-bold text-slate-900 mt-2 font-mono-code">0</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">Ready to view &amp; download</div>
+          </div>
+
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-medium text-slate-500">My Branch Papers</span>
+              <div class="w-8 h-8 rounded-lg bg-blue-50 text-brandBlue flex items-center justify-center">
+                <i class="fa-solid fa-code text-sm"></i>
+              </div>
+            </div>
+            <div id="stat-branch-papers" class="text-2xl font-bold text-brandBlue mt-2 font-mono-code">0</div>
+            <div id="stat-branch-label" class="text-[11px] text-slate-400 mt-0.5">For your branch</div>
+          </div>
+
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-medium text-slate-500">Active Regulations</span>
+              <div class="w-8 h-8 rounded-lg bg-blue-50 text-brandBlue flex items-center justify-center">
+                <i class="fa-solid fa-scroll text-sm"></i>
+              </div>
+            </div>
+            <div class="text-2xl font-bold text-slate-900 mt-2 font-mono-code">6</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">R18 • R19 • R20 • R21 • R22 • R24</div>
+          </div>
+
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-medium text-slate-500">Total Downloads</span>
+              <div class="w-8 h-8 rounded-lg bg-blue-50 text-brandBlue flex items-center justify-center">
+                <i class="fa-solid fa-circle-down text-sm"></i>
+              </div>
+            </div>
+            <div id="stat-total-downloads" class="text-2xl font-bold text-slate-900 mt-2 font-mono-code">0</div>
+            <div class="text-[11px] text-slate-400 mt-0.5">Student downloads</div>
+          </div>
+        </div>
+
+        <!-- Filter & Search Control Panel -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm mb-6 space-y-4">
+          
+          <!-- Search Bar & Dropdowns (Includes Added Regulations R18, R19, R21) -->
+          <div class="flex flex-col md:flex-row md:items-center gap-3">
+            <div class="flex-1 relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 pointer-events-none">
+                <i class="fa-solid fa-magnifying-glass text-xs"></i>
+              </span>
+              <input id="search-query" type="text" oninput="handleSearchFilter()" placeholder="Search by subject code (e.g. 22CS301) or title (e.g. Data Structures)..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+            </div>
+
+            <div class="flex items-center space-x-2">
+              <!-- Regulation Dropdown -->
+              <select id="filter-regulation" onchange="handleSearchFilter()" class="px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+                <option value="ALL">All Regulations</option>
+                <option value="R24">R24 Regulation</option>
+                <option value="R22">R22 Regulation</option>
+                <option value="R21">R21 Regulation</option>
+                <option value="R20">R20 Regulation</option>
+                <option value="R19">R19 Regulation</option>
+                <option value="R18">R18 Regulation</option>
+              </select>
+
+              <!-- Semester Dropdown -->
+              <select id="filter-semester" onchange="handleSearchFilter()" class="px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+                <option value="ALL">All Semesters</option>
+                <option value="1">Semester 1</option>
+                <option value="2">Semester 2</option>
+                <option value="3">Semester 3</option>
+                <option value="4">Semester 4</option>
+                <option value="5">Semester 5</option>
+                <option value="6">Semester 6</option>
+                <option value="7">Semester 7</option>
+                <option value="8">Semester 8</option>
+              </select>
+
+              <!-- Exam Type Dropdown -->
+              <select id="filter-exam-type" onchange="handleSearchFilter()" class="px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+                <option value="ALL">All Exam Types</option>
+                <option value="MID_1">Mid-Term 1</option>
+                <option value="MID_2">Mid-Term 2</option>
+                <option value="SEM_END">Semester End</option>
+                <option value="SUPPLY">Supplementary</option>
+              </select>
+
+              <!-- Academic Year Dropdown -->
+              <select id="filter-academic-year" onchange="handleSearchFilter()" class="px-3 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+                <option value="ALL">All Academic Years</option>
+                <option value="2025-2026">2025-2026</option>
+                <option value="2024-2025">2024-2025</option>
+                <option value="2023-2024">2023-2024</option>
+                <option value="2022-2023">2022-2023</option>
+                <option value="2021-2022">2021-2022</option>
+                <option value="2020-2021">2020-2021</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Branch Filter Chips -->
+          <div class="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs">
+            <span class="text-xs font-semibold text-slate-500 mr-1 flex items-center">
+              <i class="fa-solid fa-filter text-[10px] mr-1"></i> Branch:
+            </span>
+            <button type="button" onclick="setBranchFilter('ALL')" id="branch-chip-ALL" class="branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-brandBlue text-white shadow-sm transition">
+              All Branches
+            </button>
+            <button type="button" onclick="setBranchFilter('CSE')" id="branch-chip-CSE" class="branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+              CSE
+            </button>
+            <button type="button" onclick="setBranchFilter('AIML')" id="branch-chip-AIML" class="branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+              AIML
+            </button>
+            <button type="button" onclick="setBranchFilter('AIDS')" id="branch-chip-AIDS" class="branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+              AIDS
+            </button>
+            <button type="button" onclick="setBranchFilter('ECE')" id="branch-chip-ECE" class="branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+              ECE
+            </button>
+            <button type="button" onclick="setBranchFilter('EEE')" id="branch-chip-EEE" class="branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+              EEE
+            </button>
+            <button type="button" onclick="setBranchFilter('MECH')" id="branch-chip-MECH" class="branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+              MECH
+            </button>
+            <button type="button" onclick="setBranchFilter('CIVIL')" id="branch-chip-CIVIL" class="branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition">
+              CIVIL
+            </button>
+          </div>
+        </div>
+
+        <!-- Papers Header & Count -->
+        <div class="flex justify-between items-center mb-4">
+          <div class="flex items-center space-x-2">
+            <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wider">
+              Available Question Papers
+            </h3>
+            <span id="papers-count-badge" class="px-2 py-0.5 bg-blue-100 text-brandBlueDark text-xs font-bold rounded-full font-mono-code">
+              0 papers found
+            </span>
+          </div>
+          <div class="flex items-center space-x-3">
+            <span class="text-xs text-slate-400">Showing newest first</span>
+            <button id="btn-admin-clear" style="display: none;" type="button" onclick="adminClearAllPapers()" class="text-xs text-red-600 hover:text-red-800 transition flex items-center space-x-1" title="Admin action: Erase all papers">
+              <i class="fa-solid fa-trash-can text-[11px]"></i>
+              <span>Clear All Papers</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Question Papers Grid (Shared across all devices) -->
+        <div id="papers-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <!-- Dynamically populated via renderPapers() -->
+        </div>
+
+        <!-- Empty State (Shown when 0 papers) -->
+        <div id="empty-state" class="text-center py-16 bg-white rounded-2xl border border-slate-200 mt-4">
+          <div class="w-14 h-14 bg-blue-50 text-brandBlue rounded-2xl flex items-center justify-center mx-auto mb-3.5 border border-blue-100">
+            <i class="fa-solid fa-folder-open text-2xl"></i>
+          </div>
+          <h4 class="text-sm font-bold text-slate-800">No Question Papers Found</h4>
+          <p class="text-xs text-slate-500 mt-1.5 max-w-md mx-auto">
+            The question paper collection is currently empty or matches no filters. Be the first to upload a question paper image!
+          </p>
+          <button type="button" onclick="openUploadModal()" class="mt-5 px-5 py-2.5 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold shadow-sm transition inline-flex items-center space-x-2">
+            <i class="fa-solid fa-plus text-xs"></i>
+            <span>Upload Question Paper Image</span>
+          </button>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- Clean Footer (Removed strict color text) -->
+    <footer class="bg-white border-t border-slate-200 mt-12 py-6 text-center text-xs text-slate-500">
+      <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <div class="flex items-center space-x-2">
+          <div class="w-5 h-5 bg-brandBlueDark text-white rounded flex items-center justify-center text-[10px]">
+            <i class="fa-solid fa-building-columns"></i>
+          </div>
+          <span class="font-semibold text-slate-700">SR University PaperHub</span>
+          <span>•</span>
+          <span>Warangal, Telangana</span>
+        </div>
+        <div>
+          <span>Student Examination Paper Portal • Cloud Synchronized Archive</span>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <!-- ================= 3. QUESTION PAPER IMAGE VIEWER MODAL ================= -->
+  <div id="viewer-modal" style="display: none;" class="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex-col justify-between">
+    
+    <!-- Viewer Top Bar -->
+    <div class="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 flex items-center justify-between shadow-sm">
+      <div class="flex items-center space-x-3 truncate">
+        <button type="button" onclick="closeViewerModal()" class="p-2 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition" title="Back to Dashboard">
+          <i class="fa-solid fa-arrow-left text-sm"></i>
+        </button>
+        <div class="truncate">
+          <div class="flex items-center space-x-2">
+            <span id="viewer-subject-code" class="text-xs font-bold font-mono-code px-2 py-0.5 bg-blue-50 text-brandBlue rounded border border-blue-200">
+              22CS301
+            </span>
+            <span id="viewer-subject-name" class="text-sm font-bold text-slate-900 truncate">
+              Data Structures &amp; Algorithms
+            </span>
+          </div>
+          <div id="viewer-meta" class="text-[11px] text-slate-500 mt-0.5 truncate">
+            CSE • Semester 3 • Mid-Term 1 (R22) • 2024-2025
+          </div>
+        </div>
+      </div>
+
+      <!-- Viewer Toolbar Controls -->
+      <div class="flex items-center space-x-1.5">
+        <button type="button" onclick="zoomViewer(-0.15)" title="Zoom Out" class="p-2 text-slate-600 hover:text-brandBlue hover:bg-slate-100 rounded-lg transition">
+          <i class="fa-solid fa-magnifying-glass-minus text-sm"></i>
+        </button>
+        <span id="viewer-zoom-label" class="text-xs font-mono-code text-slate-600 px-1 min-w-[45px] text-center">
+          100%
+        </span>
+        <button type="button" onclick="zoomViewer(0.15)" title="Zoom In" class="p-2 text-slate-600 hover:text-brandBlue hover:bg-slate-100 rounded-lg transition">
+          <i class="fa-solid fa-magnifying-glass-plus text-sm"></i>
+        </button>
+        <button type="button" onclick="resetViewerZoom()" title="Reset Zoom" class="px-2 py-1 text-[11px] font-semibold text-slate-600 hover:text-brandBlue hover:bg-slate-100 rounded-lg transition">
+          Reset
+        </button>
+        <div class="h-4 w-px bg-slate-200 mx-1"></div>
+        <button type="button" onclick="rotateViewer()" title="Rotate 90° Clockwise" class="p-2 text-slate-600 hover:text-brandBlue hover:bg-slate-100 rounded-lg transition">
+          <i class="fa-solid fa-rotate-right text-sm"></i>
+        </button>
+        <button type="button" onclick="downloadActivePaper()" title="Download Paper Image" class="px-3 py-1.5 bg-brandBlue hover:bg-brandBlueHover text-white rounded-lg text-xs font-bold transition flex items-center space-x-1.5">
+          <i class="fa-solid fa-download text-xs"></i>
+          <span class="hidden sm:inline">Download</span>
+        </button>
+        <button type="button" onclick="closeViewerModal()" title="Close Viewer" class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition ml-2">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Viewer Center Image Canvas -->
+    <div class="flex-1 overflow-auto p-4 sm:p-8 flex items-center justify-center bg-slate-900/60" id="viewer-scroll-container">
+      <div id="viewer-image-wrapper" class="transition-transform duration-150 origin-center max-w-full shadow-2xl rounded-lg overflow-hidden bg-white">
+        <img id="viewer-image" src="" alt="Question Paper Image" class="max-w-none block mx-auto object-contain select-none" style="min-width: 600px; max-width: 900px;"/>
+      </div>
+    </div>
+
+    <!-- Viewer Bottom Information Bar -->
+    <div class="bg-white border-t border-slate-200 px-6 py-2.5 text-xs text-slate-600 flex justify-between items-center">
+      <div class="flex items-center space-x-4">
+        <span>Uploaded by: <strong id="viewer-uploader" class="text-slate-800">Student</strong></span>
+        <span>•</span>
+        <span>Academic Year: <strong id="viewer-year" class="text-slate-800">2024-2025</strong></span>
+        <span>•</span>
+        <span>Max Marks: <strong id="viewer-marks" class="text-slate-800">30 Marks</strong></span>
+      </div>
+      <div class="text-[11px] text-slate-400">
+        SR University PaperHub Document Viewer
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 4. IMAGE QUESTION PAPER UPLOAD MODAL ================= -->
+  <div id="upload-modal" style="display: none;" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-xl w-full p-6 sm:p-8 shadow-xl border border-slate-200 relative my-8">
+      
+      <!-- Close button -->
+      <button type="button" onclick="closeUploadModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+
+      <!-- Modal Header -->
+      <div class="flex items-center space-x-3 mb-5">
+        <div class="w-10 h-10 bg-brandBlueLight text-brandBlue rounded-xl flex items-center justify-center border border-brandBlueBorder">
+          <i class="fa-solid fa-cloud-arrow-up text-lg"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-slate-900">Upload Question Paper Image</h3>
+          <p class="text-xs text-slate-500">Provide paper details and attach scanned image or clear photo</p>
+        </div>
+      </div>
+
+      <!-- Upload Form -->
+      <form id="paper-upload-form" onsubmit="handlePaperUploadSubmit(event)" class="space-y-4">
+        
+        <!-- Row 1: Branch & Semester -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Engineering Branch *</label>
+            <select id="up-branch" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+              <option value="CSE">Computer Science &amp; Engineering (CSE)</option>
+              <option value="AIML">Artificial Intelligence &amp; ML (AIML)</option>
+              <option value="AIDS">AI &amp; Data Science (AIDS)</option>
+              <option value="ECE">Electronics &amp; Communication (ECE)</option>
+              <option value="EEE">Electrical &amp; Electronics (EEE)</option>
+              <option value="MECH">Mechanical Engineering (MECH)</option>
+              <option value="CIVIL">Civil Engineering (CIVIL)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Semester *</label>
+            <select id="up-semester" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+              <option value="1">Semester 1 (I Year)</option>
+              <option value="2">Semester 2 (I Year)</option>
+              <option value="3" selected>Semester 3 (II Year)</option>
+              <option value="4">Semester 4 (II Year)</option>
+              <option value="5">Semester 5 (III Year)</option>
+              <option value="6">Semester 6 (III Year)</option>
+              <option value="7">Semester 7 (IV Year)</option>
+              <option value="8">Semester 8 (IV Year)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 2: Exam Type & Regulation (Added R18, R19, R21) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Examination Type *</label>
+            <select id="up-exam-type" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+              <option value="MID_1">Mid-Term 1 (Mid-1)</option>
+              <option value="MID_2">Mid-Term 2 (Mid-2)</option>
+              <option value="SEM_END">Semester End Examination</option>
+              <option value="SUPPLY">Supplementary Examination</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Academic Regulation *</label>
+            <select id="up-regulation" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+              <option value="R24">R24 Regulation</option>
+              <option value="R22" selected>R22 Regulation</option>
+              <option value="R21">R21 Regulation</option>
+              <option value="R20">R20 Regulation</option>
+              <option value="R19">R19 Regulation</option>
+              <option value="R18">R18 Regulation</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 3: Subject Code & Academic Year -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Subject Code *</label>
+            <input id="up-subject-code" type="text" required placeholder="e.g. 22CS501" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono-code uppercase text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Academic Year *</label>
+            <select id="up-academic-year" required class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+              <option value="2025-2026" selected>2025-2026</option>
+              <option value="2024-2025">2024-2025</option>
+              <option value="2023-2024">2023-2024</option>
+              <option value="2022-2023">2022-2023</option>
+              <option value="2021-2022">2021-2022</option>
+              <option value="2020-2021">2020-2021</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 4: Subject Name -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Subject Name *</label>
+          <input id="up-subject-name" type="text" required placeholder="e.g. Operating Systems &amp; System Programming" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+        </div>
+
+        <!-- Row 5: IMAGE FILE UPLOAD -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">
+            Question Paper Image File * <span class="text-slate-400 font-normal">(PNG, JPG, JPEG, WEBP, or SVG)</span>
+          </label>
+          
+          <!-- Hidden Native File Input -->
+          <input id="up-image-file" type="file" accept="image/*" class="hidden" onchange="handleFileSelection(event)"/>
+
+          <!-- Drag and Drop / Click Area -->
+          <div id="drop-area" class="border-2 border-dashed border-blue-200 hover:border-brandBlue bg-blue-50/50 hover:bg-blue-50/80 rounded-xl p-5 text-center transition">
+            
+            <div id="drop-prompt" class="space-y-2.5">
+              <div class="w-10 h-10 bg-white text-brandBlue rounded-xl flex items-center justify-center mx-auto shadow-sm border border-blue-200">
+                <i class="fa-solid fa-file-image text-lg"></i>
+              </div>
+              <div>
+                <p class="text-xs font-bold text-brandBlueDark">
+                  Select Question Paper Image
+                </p>
+                <p class="text-[11px] text-slate-500 mt-0.5">
+                  Clear photos or scanned copies of SR University exam papers
+                </p>
+              </div>
+              <div>
+                <label for="up-image-file" class="inline-block px-4 py-2 bg-white text-brandBlue hover:bg-blue-50 border border-brandBlueBorder rounded-lg text-xs font-bold shadow-sm cursor-pointer transition">
+                  <i class="fa-solid fa-folder-open mr-1.5"></i> Browse Image File
+                </label>
+              </div>
+            </div>
+
+            <!-- Image Preview Box -->
+            <div id="image-preview-container" style="display: none;" class="space-y-2">
+              <div class="relative inline-block border border-slate-300 rounded-lg overflow-hidden bg-white p-1 shadow-sm">
+                <img id="image-preview" src="" alt="Paper Preview" class="max-h-48 rounded object-contain mx-auto"/>
+              </div>
+              <div class="text-xs font-semibold text-slate-700 flex items-center justify-center space-x-2">
+                <span id="image-filename" class="font-mono-code truncate max-w-xs">paper.jpg</span>
+                <span id="image-filesize" class="text-[10px] text-slate-400 font-normal"></span>
+              </div>
+              <div>
+                <button type="button" onclick="clearSelectedImage()" class="px-3 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded-lg border border-red-200 transition">
+                  <i class="fa-solid fa-trash-can mr-1 text-[10px]"></i> Remove Image
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <div id="upload-image-error" style="display: none;" class="mt-1 text-xs text-red-600 font-medium">
+            Please attach a question paper image file before submitting.
+          </div>
+        </div>
+
+        <!-- Modal Action Buttons -->
+        <div class="pt-2 flex items-center justify-end space-x-3">
+          <button type="button" onclick="closeUploadModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition">
+            Cancel
+          </button>
+          <button id="btn-submit-paper" type="submit" class="px-5 py-2.5 bg-brandBlue hover:bg-brandBlueHover text-white text-xs font-bold rounded-xl shadow-sm transition flex items-center space-x-2">
+            <i class="fa-solid fa-check"></i>
+            <span>Upload Question Paper</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= 5. ADMIN MANAGEMENT & SUPABASE MODAL ================= -->
+  <div id="admin-modal" style="display: none;" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 relative my-6">
+      <button type="button" onclick="closeAdminModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1">
+        <i class="fa-solid fa-xmark text-base"></i>
+      </button>
+
+      <div class="text-center mb-5">
+        <div class="w-12 h-12 bg-amber-50 text-amber-700 rounded-2xl flex items-center justify-center mx-auto mb-2 border border-amber-200">
+          <i class="fa-solid fa-user-shield text-xl"></i>
+        </div>
+        <h3 class="text-base font-bold text-slate-900">Administrator &amp; Cloud Control</h3>
+        <p class="text-xs text-slate-500 mt-0.5">Manage papers, clear archive, and connect Supabase database</p>
+      </div>
+
+      <!-- If Not Logged In As Admin -->
+      <div id="admin-login-box">
+        <form onsubmit="handleAdminLogin(event)" class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Admin Password</label>
+            <input id="admin-password-input" type="password" required placeholder="Enter password (default: admin123)" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+          </div>
+          <button type="submit" class="w-full py-2.5 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm">
+            Login as Administrator
+          </button>
+        </form>
+      </div>
+
+      <!-- If Logged In As Admin -->
+      <div id="admin-controls-box" style="display: none;" class="space-y-4">
+        
+        <!-- Supabase Cloud Config Section -->
+        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold text-slate-800 flex items-center space-x-1.5">
+              <i class="fa-solid fa-database text-brandBlue"></i>
+              <span>Supabase Cloud Database</span>
+            </span>
+            <span id="supabase-status-pill" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-600">Not Connected</span>
+          </div>
+
+          <p class="text-[11px] text-slate-500 mb-3">
+            Connect to your Supabase project to store question papers and image files permanently in the cloud across all devices.
+          </p>
+
+          <div class="space-y-2">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-0.5">Project URL</label>
+              <input id="cfg-supabase-url" type="url" placeholder="https://your-project.supabase.co" class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono-code text-slate-800 focus:outline-none focus:ring-1 focus:ring-brandBlue"/>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-600 mb-0.5">API Anon Key</label>
+              <input id="cfg-supabase-key" type="password" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." class="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono-code text-slate-800 focus:outline-none focus:ring-1 focus:ring-brandBlue"/>
+            </div>
+            <div class="pt-1 flex items-center space-x-2">
+              <button type="button" onclick="saveSupabaseConfig()" class="flex-1 py-1.5 bg-brandBlue hover:bg-brandBlueHover text-white rounded-lg text-xs font-bold transition">
+                Save &amp; Connect Cloud
+              </button>
+              <button type="button" onclick="disconnectSupabase()" class="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-medium transition">
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Campus Announcement -->
+        <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+          <label class="block text-xs font-bold text-slate-800 mb-1">
+            <i class="fa-solid fa-bullhorn text-brandBlue mr-1"></i> Update Campus Announcement
+          </label>
+          <textarea id="admin-notice-input" rows="2" class="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-brandBlue mb-2"></textarea>
+          <button type="button" onclick="saveAnnouncementFromModal()" class="w-full py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold transition">
+            Publish Notice to Dashboard
+          </button>
+        </div>
+
+        <!-- Clear Archive -->
+        <div class="p-3.5 bg-red-50 rounded-xl border border-red-200">
+          <label class="block text-xs font-bold text-red-900 mb-0.5">
+            <i class="fa-solid fa-triangle-exclamation text-red-600 mr-1"></i> Danger Zone
+          </label>
+          <p class="text-[11px] text-red-700 mb-2">Erase all question papers from all branches permanently.</p>
+          <button type="button" onclick="adminClearAllPapers()" class="w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition">
+            Clear Entire Paper Archive
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+  <!-- ================= 6. JAVASCRIPT CONTROLLER ================= -->
+  <script>
+    // Global Application State
+    let currentUser = null;
+    let isAdmin = false;
+    let papersList = [];
+    let activeFilterBranch = 'ALL';
+    let activePaperInViewer = null;
+    let viewerZoomLevel = 1.0;
+    let viewerRotationDeg = 0;
+    let selectedImageBase64 = null;
+    let supabaseClient = null;
+
+    // Initialize Supabase Client
+    function initSupabase() {
+      // 1. Check window.SUPABASE_URL (from supabase_config.js)
+      let url = window.SUPABASE_URL || '';
+      let key = window.SUPABASE_ANON_KEY || '';
+
+      // 2. Check localStorage override
+      const savedConfig = localStorage.getItem('sru_supabase_config');
+      if (savedConfig) {
+        try {
+          const cfg = JSON.parse(savedConfig);
+          if (cfg.url) url = cfg.url;
+          if (cfg.key) key = cfg.key;
+        } catch(e) {}
+      }
+
+      if (url && key && window.supabase) {
+        try {
+          supabaseClient = window.supabase.createClient(url, key);
+          updateCloudStatusUI(true, url);
+          return true;
+        } catch (err) {
+          console.warn("Could not connect to Supabase with credentials:", err);
+          updateCloudStatusUI(false);
+          return false;
+        }
+      } else {
+        updateCloudStatusUI(false);
+        return false;
+      }
+    }
+
+    function updateCloudStatusUI(connected, url = '') {
+      const authStatus = document.getElementById('auth-cloud-status');
+      const navDot = document.getElementById('nav-cloud-dot');
+      const navLabel = document.getElementById('nav-cloud-label');
+      const modalPill = document.getElementById('supabase-status-pill');
+
+      if (connected) {
+        if (authStatus) authStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span> <span class="text-emerald-700 font-medium">Supabase Cloud Connected</span>';
+        if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-emerald-500';
+        if (navLabel) navLabel.textContent = 'Supabase Cloud';
+        if (modalPill) {
+          modalPill.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800';
+          modalPill.textContent = 'Connected';
+        }
+      } else {
+        if (authStatus) authStatus.innerHTML = '<span class="w-2 h-2 rounded-full bg-blue-500"></span> <span class="text-blue-700 font-medium">Local Server Mode</span>';
+        if (navDot) navDot.className = 'w-2 h-2 rounded-full bg-blue-500';
+        if (navLabel) navLabel.textContent = 'Local Server';
+        if (modalPill) {
+          modalPill.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-600';
+          modalPill.textContent = 'Not Connected';
+        }
+      }
+    }
+
+    // Save Supabase Configuration
+    async function saveSupabaseConfig() {
+      const url = document.getElementById('cfg-supabase-url').value.trim();
+      const key = document.getElementById('cfg-supabase-key').value.trim();
+
+      if (!url || !key) {
+        alert('Please enter both your Supabase Project URL and Anon API Key.');
+        return;
+      }
+
+      try {
+        const client = window.supabase.createClient(url, key);
+        // Test query
+        const { data, error } = await client.from('papers').select('count', { count: 'exact', head: true });
+        if (error) {
+          console.warn("Supabase query test error:", error);
+          if (error.code === '42P01') {
+            alert('Connected to Supabase, but the "papers" table was not found! Please run the supabase_schema.sql script in your Supabase SQL Editor.');
+          }
+        }
+        
+        localStorage.setItem('sru_supabase_config', JSON.stringify({ url, key }));
+        supabaseClient = client;
+        updateCloudStatusUI(true, url);
+        showToast('Connected to Supabase Cloud Database!', 'success');
+        await fetchPapers();
+      } catch(err) {
+        alert('Failed to connect to Supabase: ' + err.message);
+      }
+    }
+
+    function disconnectSupabase() {
+      localStorage.removeItem('sru_supabase_config');
+      supabaseClient = null;
+      document.getElementById('cfg-supabase-url').value = '';
+      document.getElementById('cfg-supabase-key').value = '';
+      updateCloudStatusUI(false);
+      showToast('Switched back to Local Server mode', 'info');
+      fetchPapers();
+    }
+
+    // Robust API Helper with Tunnel Bypass Headers
+    async function apiCall(endpoint, method = 'GET', data = null) {
+      const headers = {
+        'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': '69420',
+        'Bypass-Tunnel-Reminder': '1',
+        'Cache-Control': 'no-cache, no-store'
+      };
+      const options = { method, headers };
+      if (data && method !== 'GET') {
+        options.body = JSON.stringify(data);
+      }
+      try {
+        const response = await fetch(endpoint, options);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const text = await response.text();
+        try {
+          return JSON.parse(text);
+        } catch (jsonErr) {
+          console.warn("Received non-JSON response from endpoint:", text.slice(0, 100));
+          return null;
+        }
+      } catch (networkErr) {
+        console.warn(`Network request to ${endpoint} failed:`, networkErr);
+        return null;
+      }
+    }
+
+    // Initialization: ALWAYS Show Login Screen First
+    window.addEventListener('DOMContentLoaded', () => {
+      showAuthView();
+      // Ensure fields are empty
+      document.getElementById('login-roll').value = '';
+      document.getElementById('login-email').value = '';
+      if (document.getElementById('login-name')) {
+        document.getElementById('login-name').value = '';
+      }
+
+      // Check Supabase connection
+      initSupabase();
+    });
+
+    // Authentication Tabs (Sign In / Register)
+    let currentAuthMode = 'login';
+    function setAuthTab(mode) {
+      currentAuthMode = mode;
+      const tabLogin = document.getElementById('auth-tab-login');
+      const tabRegister = document.getElementById('auth-tab-register');
+      const fieldName = document.getElementById('field-name');
+      const submitBtn = document.getElementById('auth-submit-btn');
+
+      if (mode === 'login') {
+        tabLogin.className = "flex-1 pb-3 border-b-2 border-brandBlue text-brandBlue font-bold transition";
+        tabRegister.className = "flex-1 pb-3 text-slate-400 hover:text-slate-600 transition";
+        fieldName.style.display = 'none';
+        submitBtn.innerHTML = '<span>Continue to Dashboard</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+      } else {
+        tabRegister.className = "flex-1 pb-3 border-b-2 border-brandBlue text-brandBlue font-bold transition";
+        tabLogin.className = "flex-1 pb-3 text-slate-400 hover:text-slate-600 transition";
+        fieldName.style.display = 'block';
+        submitBtn.innerHTML = '<span>Register &amp; Continue</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+      }
+    }
+
+    async function handleAuthSubmit(event) {
+      event.preventDefault();
+      const rollNo = document.getElementById('login-roll').value.trim().toUpperCase();
+      const email = document.getElementById('login-email').value.trim().toLowerCase();
+      const branch = document.getElementById('login-branch').value;
+      const semester = parseInt(document.getElementById('login-sem').value);
+      const name = currentAuthMode === 'register' 
+        ? (document.getElementById('login-name').value.trim() || 'Student') 
+        : (rollNo || 'Student');
+
+      currentUser = { rollNo, email, branch, semester, name };
+
+      const result = await apiCall('/api/login', 'POST', currentUser);
+      if (result && result.student) {
+        currentUser = result.student;
+      }
+
+      showToast('Signed in successfully', 'success');
+      initDashboard();
+    }
+
+    // Admin Access
+    function openAdminModal() {
+      document.getElementById('admin-modal').style.display = 'flex';
+      if (isAdmin) {
+        document.getElementById('admin-login-box').style.display = 'none';
+        document.getElementById('admin-controls-box').style.display = 'block';
+        
+        // Pre-fill config if present
+        const savedConfig = localStorage.getItem('sru_supabase_config');
+        if (savedConfig) {
+          try {
+            const cfg = JSON.parse(savedConfig);
+            document.getElementById('cfg-supabase-url').value = cfg.url || '';
+            document.getElementById('cfg-supabase-key').value = cfg.key || '';
+          } catch(e) {}
+        }
+        document.getElementById('admin-notice-input').value = document.getElementById('announcement-text').textContent;
+      } else {
+        document.getElementById('admin-login-box').style.display = 'block';
+        document.getElementById('admin-controls-box').style.display = 'none';
+        document.getElementById('admin-password-input').value = '';
+      }
+    }
+
+    function closeAdminModal() {
+      document.getElementById('admin-modal').style.display = 'none';
+    }
+
+    async function handleAdminLogin(event) {
+      event.preventDefault();
+      const pwd = document.getElementById('admin-password-input').value;
+      const res = await apiCall('/api/admin/login', 'POST', { password: pwd });
+      if (res && res.success) {
+        isAdmin = true;
+        currentUser = {
+          rollNo: "ADMIN",
+          name: "Administrator",
+          email: "admin@sru.edu.in",
+          branch: "CSE",
+          semester: 1
+        };
+        showToast('Logged in with Admin privileges', 'success');
+        openAdminModal();
+        initDashboard();
+      } else {
+        alert('Invalid Admin Password. Default is admin123');
+      }
+    }
+
+    async function saveAnnouncementFromModal() {
+      const text = document.getElementById('admin-notice-input').value.trim();
+      if (!text) return;
+
+      if (supabaseClient) {
+        try {
+          await supabaseClient.from('announcements').upsert({ id: 1, text, updated_at: new Date() });
+        } catch(e) {}
+      }
+
+      await apiCall('/api/admin/announcement', 'POST', { text, password: 'admin123' });
+      document.getElementById('announcement-text').textContent = text;
+      showToast('Announcement published live to all students!', 'success');
+    }
+
+    async function adminDeletePaper(paperId, event) {
+      if (event) event.stopPropagation();
+      if (!confirm('Are you sure you want to permanently delete this question paper?')) {
+        return;
+      }
+
+      // If Supabase connected, delete from Supabase
+      if (supabaseClient) {
+        try {
+          await supabaseClient.from('papers').delete().eq('id', paperId);
+        } catch(e) {
+          console.warn("Supabase delete error:", e);
+        }
+      }
+
+      // Delete from server
+      await apiCall('/api/admin/delete', 'POST', { paperId, password: 'admin123' });
+      showToast('Question paper deleted', 'info');
+      await fetchPapers();
+    }
+
+    async function adminClearAllPapers() {
+      if (!confirm('ADMIN ACTION: Are you sure you want to erase ALL uploaded papers from all branches?')) {
+        return;
+      }
+
+      if (supabaseClient) {
+        try {
+          await supabaseClient.from('papers').delete().neq('id', 'dummy');
+        } catch(e) {
+          console.warn("Supabase clear error:", e);
+        }
+      }
+
+      await apiCall('/api/admin/clear-all', 'POST', { password: 'admin123' });
+      showToast('All question papers have been cleared', 'info');
+      await fetchPapers();
+    }
+
+    async function editAnnouncementPrompt() {
+      openAdminModal();
+    }
+
+    function handleLogout() {
+      currentUser = null;
+      isAdmin = false;
+      showAuthView();
+      showToast('Signed out of PaperHub', 'info');
+    }
+
+    function showAuthView() {
+      document.getElementById('auth-view').style.display = 'flex';
+      document.getElementById('app-view').style.display = 'none';
+      closeUploadModal();
+      closeViewerModal();
+      closeAdminModal();
+    }
+
+    function showDashboardView() {
+      document.getElementById('auth-view').style.display = 'none';
+      document.getElementById('app-view').style.display = 'flex';
+    }
+
+    // Dashboard Controller
+    async function initDashboard() {
+      showDashboardView();
+
+      // UI Admin adjustments
+      if (isAdmin) {
+        document.getElementById('admin-badge').style.display = 'flex';
+        document.getElementById('btn-admin-clear').style.display = 'flex';
+        document.getElementById('btn-edit-announcement').style.display = 'inline-block';
+        document.getElementById('nav-student-roll').textContent = 'ADMIN';
+        document.getElementById('nav-student-branch').textContent = 'Management';
+        document.getElementById('welcome-heading').textContent = 'Administrator Control Panel';
+        document.getElementById('welcome-subheading').textContent = 'You have full access to manage uploaded exam papers, connect Supabase Cloud DB, and post announcements.';
+      } else {
+        document.getElementById('admin-badge').style.display = 'none';
+        document.getElementById('btn-admin-clear').style.display = 'none';
+        document.getElementById('btn-edit-announcement').style.display = 'none';
+        if (currentUser) {
+          document.getElementById('nav-student-roll').textContent = currentUser.rollNo || 'Student';
+          document.getElementById('nav-student-branch').textContent = `${currentUser.branch || 'CSE'} • Sem ${currentUser.semester || 1}`;
+          document.getElementById('welcome-heading').textContent = `Welcome, ${currentUser.name || 'Student'} (${currentUser.rollNo || ''})`;
+          document.getElementById('welcome-subheading').textContent = `Department of ${getBranchFullName(currentUser.branch)} • Semester ${currentUser.semester}. Browse past exam papers or upload newly scanned papers.`;
+        }
+      }
+
+      // Fetch latest announcement (from Supabase if active, else from server)
+      if (supabaseClient) {
+        try {
+          const { data } = await supabaseClient.from('announcements').select('text').eq('id', 1).single();
+          if (data && data.text) {
+            document.getElementById('announcement-text').textContent = data.text;
+          }
+        } catch(e) {}
+      } else {
+        const annRes = await apiCall('/api/announcement');
+        if (annRes && annRes.announcement) {
+          document.getElementById('announcement-text').textContent = annRes.announcement;
+        }
+      }
+      
+      await fetchPapers();
+    }
+
+    function getBranchFullName(code) {
+      const map = {
+        'CSE': 'Computer Science & Engineering',
+        'AIML': 'Artificial Intelligence & Machine Learning',
+        'AIDS': 'AI & Data Science',
+        'ECE': 'Electronics & Communication Engineering',
+        'EEE': 'Electrical & Electronics Engineering',
+        'MECH': 'Mechanical Engineering',
+        'CIVIL': 'Civil Engineering'
+      };
+      return map[code] || code;
+    }
+
+    // Fetch papers: Checks Supabase Cloud Database first, falls back to server
+    async function fetchPapers() {
+      let loaded = false;
+
+      // 1. Try Supabase Cloud Database
+      if (supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient
+            .from('papers')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          if (!error && Array.isArray(data)) {
+            // Map snake_case columns from Supabase to frontend
+            papersList = data.map(row => ({
+              id: row.id,
+              subjectCode: row.subject_code,
+              subjectName: row.subject_name,
+              branch: row.branch,
+              semester: row.semester,
+              examType: row.exam_type,
+              examTypeLabel: row.exam_type_label || (row.exam_type === 'MID_1' ? 'Mid-Term 1' : (row.exam_type === 'MID_2' ? 'Mid-Term 2' : 'Semester End')),
+              regulation: row.regulation,
+              academicYear: row.academic_year,
+              duration: row.duration,
+              maxMarks: row.max_marks,
+              uploaderName: row.uploader_name,
+              uploaderRollNo: row.uploader_roll,
+              imageUrl: row.image_url,
+              downloadCount: row.download_count || 0
+            }));
+            loaded = true;
+          }
+        } catch (err) {
+          console.warn("Supabase fetch failed, falling back to server:", err);
+        }
+      }
+
+      // 2. Fallback to Local Server
+      if (!loaded) {
+        const serverPapers = await apiCall('/api/papers');
+        if (Array.isArray(serverPapers)) {
+          papersList = serverPapers;
+        } else {
+          papersList = [];
+        }
+      }
+
+      renderPapers();
+      updateMetrics();
+    }
+
+    function updateMetrics() {
+      const total = papersList.length;
+      const branchCount = papersList.filter(p => currentUser && p.branch && p.branch.toUpperCase() === currentUser.branch.toUpperCase()).length;
+      const totalDownloads = papersList.reduce((acc, p) => acc + (p.downloadCount || 0), 0);
+
+      document.getElementById('stat-total-papers').textContent = total;
+      document.getElementById('stat-branch-papers').textContent = branchCount;
+      document.getElementById('stat-branch-label').textContent = currentUser && currentUser.branch ? `For ${currentUser.branch} Branch` : 'For your branch';
+      document.getElementById('stat-total-downloads').textContent = totalDownloads;
+    }
+
+    function setBranchFilter(branch) {
+      activeFilterBranch = branch;
+      document.querySelectorAll('.branch-chip').forEach(btn => {
+        btn.className = "branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition";
+      });
+      const activeBtn = document.getElementById(`branch-chip-${branch}`);
+      if (activeBtn) {
+        activeBtn.className = "branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-brandBlue text-white shadow-sm transition";
+      }
+      renderPapers();
+    }
+
+    function handleSearchFilter() {
+      renderPapers();
+    }
+
+    function renderPapers() {
+      const query = (document.getElementById('search-query')?.value || '').toLowerCase().trim();
+      const semFilter = document.getElementById('filter-semester')?.value || 'ALL';
+      const examFilter = document.getElementById('filter-exam-type')?.value || 'ALL';
+      const regFilter = document.getElementById('filter-regulation')?.value || 'ALL';
+      const yearFilter = document.getElementById('filter-academic-year')?.value || 'ALL';
+
+      let filtered = papersList.filter(paper => {
+        // Branch filter
+        if (activeFilterBranch !== 'ALL' && paper.branch && paper.branch.toUpperCase() !== activeFilterBranch.toUpperCase()) {
+          return false;
+        }
+        // Semester filter
+        if (semFilter !== 'ALL' && String(paper.semester) !== String(semFilter)) {
+          return false;
+        }
+        // Exam type filter
+        if (examFilter !== 'ALL' && paper.examType && paper.examType.toUpperCase() !== examFilter.toUpperCase()) {
+          return false;
+        }
+        // Regulation filter
+        if (regFilter !== 'ALL' && paper.regulation && paper.regulation.toUpperCase() !== regFilter.toUpperCase()) {
+          return false;
+        }
+        // Academic Year filter
+        if (yearFilter !== 'ALL' && paper.academicYear && paper.academicYear !== yearFilter) {
+          return false;
+        }
+        // Text Search query
+        if (query) {
+          const matchCode = (paper.subjectCode || '').toLowerCase().includes(query);
+          const matchName = (paper.subjectName || '').toLowerCase().includes(query);
+          const matchBranch = (paper.branch || '').toLowerCase().includes(query);
+          const matchYear = (paper.academicYear || '').toLowerCase().includes(query);
+          if (!matchCode && !matchName && !matchBranch && !matchYear) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      const grid = document.getElementById('papers-grid');
+      const emptyState = document.getElementById('empty-state');
+      const countBadge = document.getElementById('papers-count-badge');
+
+      countBadge.textContent = `${filtered.length} paper${filtered.length === 1 ? '' : 's'} available`;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '';
+        emptyState.style.display = 'block';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      grid.innerHTML = filtered.map(paper => createPaperCardHTML(paper)).join('');
+    }
+
+    function createPaperCardHTML(paper) {
+      const examLabel = paper.examTypeLabel || (paper.examType === 'MID_1' ? 'Mid-Term 1' : (paper.examType === 'MID_2' ? 'Mid-Term 2' : 'Semester End'));
+      const thumbnailSrc = paper.imageUrl || '/images/paper_dsa.svg';
+
+      return `
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition duration-200 flex flex-col overflow-hidden group">
+          <!-- Card Header Badges -->
+          <div class="p-4 pb-3 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="font-mono-code text-xs font-bold px-2.5 py-1 bg-blue-50 text-brandBlue rounded-lg border border-blue-200">
+                ${escapeHTML(paper.subjectCode)}
+              </span>
+              <span class="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                ${escapeHTML(paper.regulation || 'R22')}
+              </span>
+            </div>
+            <span class="text-[11px] font-semibold text-brandBlueDark bg-blue-100/60 px-2.5 py-0.5 rounded-full">
+              ${escapeHTML(examLabel)}
+            </span>
+          </div>
+
+          <!-- Subject Title & Branch Info -->
+          <div class="p-4 flex-1">
+            <h4 class="text-sm font-bold text-slate-900 group-hover:text-brandBlue transition leading-snug line-clamp-2">
+              ${escapeHTML(paper.subjectName)}
+            </h4>
+            <div class="mt-1.5 flex items-center space-x-2 text-xs text-slate-500">
+              <span class="font-semibold text-slate-700">${escapeHTML(paper.branch)}</span>
+              <span>•</span>
+              <span>Semester ${paper.semester}</span>
+              <span>•</span>
+              <span>${escapeHTML(paper.academicYear || '2025-2026')}</span>
+            </div>
+
+            <!-- Image Thumbnail Preview -->
+            <div onclick="openViewerModal('${paper.id}')" class="mt-3.5 relative bg-slate-50 border border-slate-200 rounded-xl overflow-hidden cursor-pointer h-40 flex items-center justify-center group/img">
+              <img src="${thumbnailSrc}" alt="Paper Thumbnail" class="w-full h-full object-cover object-top opacity-90 group-hover/img:opacity-100 transition"/>
+              <div class="absolute inset-0 bg-blue-950/20 group-hover/img:bg-blue-950/40 flex items-center justify-center transition">
+                <span class="px-3 py-1.5 bg-white text-brandBlueDark text-xs font-bold rounded-lg shadow flex items-center space-x-1.5 group-hover/img:scale-105 transition">
+                  <i class="fa-solid fa-eye text-xs"></i>
+                  <span>View Paper Image</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- Contributor info -->
+            <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+              <span class="truncate font-mono-code">By ${escapeHTML(paper.uploaderRollNo || 'Student')}</span>
+              <span class="font-mono-code text-slate-400">${paper.downloadCount || 0} downloads</span>
+            </div>
+          </div>
+
+          <!-- Card Actions (Includes Admin Delete Button when in Admin Mode) -->
+          <div class="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center space-x-2">
+            <button type="button" onclick="openViewerModal('${paper.id}')" class="flex-1 py-2 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center justify-center space-x-1.5">
+              <i class="fa-solid fa-magnifying-glass text-xs"></i>
+              <span>View Full Paper</span>
+            </button>
+            <a href="${thumbnailSrc}" download="${paper.subjectCode}_${paper.branch}_${paper.examType}.png" target="_blank" onclick="trackDownload('${paper.id}')" class="p-2 bg-white hover:bg-blue-50 text-slate-700 hover:text-brandBlue border border-slate-300 rounded-xl transition" title="Direct Download Image">
+              <i class="fa-solid fa-arrow-down text-xs"></i>
+            </a>
+            ${isAdmin ? `
+              <button type="button" onclick="adminDeletePaper('${paper.id}', event)" class="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition border border-red-200" title="Delete Paper (Admin)">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    // Question Paper Image Viewer Controller
+    function openViewerModal(paperId) {
+      const paper = papersList.find(p => p.id === paperId);
+      if (!paper) return;
+
+      activePaperInViewer = paper;
+      viewerZoomLevel = 1.0;
+      viewerRotationDeg = 0;
+
+      document.getElementById('viewer-subject-code').textContent = paper.subjectCode;
+      document.getElementById('viewer-subject-name').textContent = paper.subjectName;
+      document.getElementById('viewer-meta').textContent = `${paper.branch} • Semester ${paper.semester} • ${paper.examTypeLabel || paper.examType} (${paper.regulation || 'R22'}) • ${paper.academicYear || '2025-2026'}`;
+      document.getElementById('viewer-uploader').textContent = `${paper.uploaderName || 'Student'} (${paper.uploaderRollNo || 'SRU'})`;
+      document.getElementById('viewer-year').textContent = paper.academicYear || '2025-2026';
+      document.getElementById('viewer-marks').textContent = `${paper.maxMarks || 30} Marks (${paper.duration || '90 Mins'})`;
+
+      const viewerImg = document.getElementById('viewer-image');
+      viewerImg.src = paper.imageUrl || '/images/paper_dsa.svg';
+      updateViewerTransform();
+
+      document.getElementById('viewer-modal').style.display = 'flex';
+      document.body.classList.add('overflow-hidden');
+    }
+
+    function closeViewerModal() {
+      document.getElementById('viewer-modal').style.display = 'none';
+      document.body.classList.remove('overflow-hidden');
+      activePaperInViewer = null;
+    }
+
+    function zoomViewer(delta) {
+      viewerZoomLevel = Math.max(0.4, Math.min(3.0, viewerZoomLevel + delta));
+      updateViewerTransform();
+    }
+
+    function resetViewerZoom() {
+      viewerZoomLevel = 1.0;
+      viewerRotationDeg = 0;
+      updateViewerTransform();
+    }
+
+    function rotateViewer() {
+      viewerRotationDeg = (viewerRotationDeg + 90) % 360;
+      updateViewerTransform();
+    }
+
+    function updateViewerTransform() {
+      const wrapper = document.getElementById('viewer-image-wrapper');
+      const label = document.getElementById('viewer-zoom-label');
+      wrapper.style.transform = `scale(${viewerZoomLevel}) rotate(${viewerRotationDeg}deg)`;
+      label.textContent = `${Math.round(viewerZoomLevel * 100)}%`;
+    }
+
+    function downloadActivePaper() {
+      if (!activePaperInViewer) return;
+      const link = document.createElement('a');
+      link.href = activePaperInViewer.imageUrl || '/images/paper_dsa.svg';
+      link.download = `${activePaperInViewer.subjectCode}_${activePaperInViewer.branch}_${activePaperInViewer.examType}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      trackDownload(activePaperInViewer.id);
+      showToast('Downloading question paper image...', 'info');
+    }
+
+    async function trackDownload(paperId) {
+      const p = papersList.find(item => item.id === paperId);
+      if (p) {
+        p.downloadCount = (p.downloadCount || 0) + 1;
+        updateMetrics();
+        if (supabaseClient) {
+          try {
+            await supabaseClient.from('papers').update({ download_count: p.downloadCount }).eq('id', paperId);
+          } catch(e) {}
+        }
+      }
+    }
+
+    // Image Upload Modal Controller
+    function openUploadModal() {
+      if (currentUser && currentUser.branch) {
+        document.getElementById('up-branch').value = currentUser.branch;
+        document.getElementById('up-semester').value = currentUser.semester;
+      }
+      clearSelectedImage();
+      document.getElementById('upload-modal').style.display = 'flex';
+      document.body.classList.add('overflow-hidden');
+    }
+
+    function closeUploadModal() {
+      document.getElementById('upload-modal').style.display = 'none';
+      document.body.classList.remove('overflow-hidden');
+      document.getElementById('paper-upload-form').reset();
+      clearSelectedImage();
+    }
+
+    function handleFileSelection(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file (PNG, JPG, JPEG, WEBP, or SVG).');
+        return;
+      }
+
+      document.getElementById('upload-image-error').style.display = 'none';
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const rawData = e.target.result;
+        
+        if (file.type.includes('svg')) {
+          selectedImageBase64 = rawData;
+          showPreview(file.name, file.size, rawData);
+          return;
+        }
+
+        // Optimize JPG/PNG via canvas to ~200KB for fast cross-device sync
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 1200;
+          let w = img.width;
+          let h = img.height;
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w);
+              w = maxDim;
+            } else {
+              w = Math.round((w * maxDim) / h);
+              h = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          selectedImageBase64 = canvas.toDataURL('image/jpeg', 0.85);
+          showPreview(file.name, file.size, selectedImageBase64);
+        };
+        img.src = rawData;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function showPreview(name, size, src) {
+      document.getElementById('drop-prompt').style.display = 'none';
+      const previewContainer = document.getElementById('image-preview-container');
+      previewContainer.style.display = 'block';
+      document.getElementById('image-preview').src = src;
+      document.getElementById('image-filename').textContent = name;
+      const sizeKB = Math.round(size / 1024);
+      document.getElementById('image-filesize').textContent = `(${sizeKB} KB)`;
+    }
+
+    function clearSelectedImage() {
+      selectedImageBase64 = null;
+      document.getElementById('up-image-file').value = '';
+      document.getElementById('drop-prompt').style.display = 'block';
+      document.getElementById('image-preview-container').style.display = 'none';
+      document.getElementById('image-preview').src = '';
+      document.getElementById('upload-image-error').style.display = 'none';
+    }
+
+    // Drag and Drop handling on drop-area
+    const dropArea = document.getElementById('drop-area');
+    if (dropArea) {
+      ['dragenter', 'dragover'].forEach(eventName => {
+        dropArea.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          dropArea.classList.add('border-brandBlue', 'bg-blue-100/50');
+        }, false);
+      });
+      ['dragleave', 'drop'].forEach(eventName => {
+        dropArea.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          dropArea.classList.remove('border-brandBlue', 'bg-blue-100/50');
+        }, false);
+      });
+      dropArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files && files.length > 0) {
+          handleFileSelection({ target: { files: files } });
+        }
+      }, false);
+    }
+
+    // Submit Paper - Uploads to Supabase Cloud or Local Server
+    async function handlePaperUploadSubmit(event) {
+      event.preventDefault();
+
+      if (!selectedImageBase64) {
+        document.getElementById('upload-image-error').style.display = 'block';
+        return;
+      }
+      
+      const submitBtn = document.getElementById('btn-submit-paper');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Uploading...</span>';
+
+      const code = document.getElementById('up-subject-code').value.trim().toUpperCase();
+      const name = document.getElementById('up-subject-name').value.trim();
+      const branch = document.getElementById('up-branch').value;
+      const sem = parseInt(document.getElementById('up-semester').value);
+      const exam = document.getElementById('up-exam-type').value;
+      const reg = document.getElementById('up-regulation').value;
+      const year = document.getElementById('up-academic-year').value;
+
+      const paperId = `sru_${branch.lowerCase ? branch.toLowerCase() : branch.toLowerCase()}_${code.toLowerCase()}_${Date.now()}`;
+      const examLabels = {
+        'MID_1': 'Mid-Term 1',
+        'MID_2': 'Mid-Term 2',
+        'SEM_END': 'Semester End Exam',
+        'SUPPLY': 'Supplementary Exam'
+      };
+
+      let uploadedImageUrl = null;
+      let cloudSaved = false;
+
+      // 1. If Supabase is connected: Upload image to Supabase Storage & insert row into 'papers' table
+      if (supabaseClient) {
+        try {
+          submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Uploading to Supabase Cloud...</span>';
+          
+          // Convert base64 data URL to Blob
+          const res = await fetch(selectedImageBase64);
+          const blob = await res.blob();
+          const fileName = `paper_${Date.now()}_${code.toLowerCase()}.jpg`;
+
+          // Upload to Supabase Storage Bucket 'paper-images'
+          const { data: storageData, error: storageErr } = await supabaseClient
+            .storage
+            .from('paper-images')
+            .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true });
+
+          if (!storageErr) {
+            const { data: urlData } = supabaseClient.storage.from('paper-images').getPublicUrl(fileName);
+            uploadedImageUrl = urlData.publicUrl;
+          } else {
+            console.warn("Supabase storage upload error:", storageErr);
+          }
+
+          // Insert into Supabase 'papers' table
+          const { error: dbErr } = await supabaseClient.from('papers').insert({
+            id: paperId,
+            subject_code: code,
+            subject_name: name,
+            branch: branch,
+            semester: sem,
+            exam_type: exam,
+            exam_type_label: examLabels[exam] || exam,
+            regulation: reg,
+            academic_year: year,
+            duration: exam.includes('MID') ? '90 Mins' : '3 Hours',
+            max_marks: exam.includes('MID') ? 30 : 60,
+            uploader_name: currentUser ? currentUser.name : 'Student',
+            uploader_roll: currentUser ? currentUser.rollNo : 'SRU',
+            image_url: uploadedImageUrl || selectedImageBase64,
+            download_count: 0
+          });
+
+          if (!dbErr) {
+            cloudSaved = true;
+          } else {
+            console.warn("Supabase DB insert error:", dbErr);
+          }
+        } catch (err) {
+          console.warn("Supabase upload exception:", err);
+        }
+      }
+
+      // 2. Also send to local server backup
+      const payload = {
+        subjectCode: code,
+        subjectName: name,
+        branch: branch,
+        semester: sem,
+        examType: exam,
+        regulation: reg,
+        academicYear: year,
+        uploaderName: currentUser ? currentUser.name : "Student",
+        uploaderRollNo: currentUser ? currentUser.rollNo : "SRU",
+        imageData: selectedImageBase64
+      };
+
+      const serverRes = await apiCall('/api/upload', 'POST', payload);
+      
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fa-solid fa-check"></i> <span>Upload Question Paper</span>';
+
+      if (cloudSaved || (serverRes && serverRes.success)) {
+        showToast('Question paper uploaded successfully and shared to all devices!', 'success');
+        closeUploadModal();
+        await fetchPapers();
+      } else {
+        alert('Upload failed. Please check your connection or Supabase settings in Admin Panel.');
+      }
+    }
+
+    // Helper: Toast Notifications
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const icon = type === 'success' ? 'fa-circle-check text-brandBlue' : 'fa-circle-info text-blue-600';
+      toast.className = 'px-4 py-3 bg-white text-slate-800 rounded-xl shadow-lg border border-slate-200 text-xs font-semibold flex items-center space-x-2.5 transition-all duration-300 pointer-events-auto';
+      toast.innerHTML = `
+        <i class="fa-solid ${icon} text-sm"></i>
+        <span>${escapeHTML(message)}</span>
+      `;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // Helper: HTML Escaper
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>
+'''
+
+with open('public/index.html', 'w', encoding='utf-8') as f:
+    f.write(html_content)
+
+print("public/index.html generated successfully with size:", len(html_content))

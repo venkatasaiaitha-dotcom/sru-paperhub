@@ -1,0 +1,40 @@
+[
+  {
+    "id": "sru_cse_usus_1791011903",
+    "subjectCode": "USUS",
+    "subjectName": "Usus",
+    "branch": "CSE",
+    "semester": 5,
+    "examType": "MID_1",
+    "examTypeLabel": "Mid-Term 1",
+    "regulation": "R22",
+    "academicYear": "2024-2025",
+    "duration": "90 Mins",
+    "maxMarks": 30,
+    "school": "School of Computer Science & AI",
+    "uploaderName": "21SR1A0502",
+    "uploaderRollNo": "21SR1A0502",
+    "uploadDate": "Just now",
+    "imageUrl": "/uploads/paper_1791011903_usus.jpg",
+    "downloadCount": 1
+  },
+  {
+    "id": "sru_cse_123_1791011274",
+    "subjectCode": "123",
+    "subjectName": "ims",
+    "branch": "CSE",
+    "semester": 3,
+    "examType": "MID_1",
+    "examTypeLabel": "Mid-Term 1",
+    "regulation": "R22",
+    "academicYear": "2024-2025",
+    "duration": "90 Mins",
+    "maxMarks": 30,
+    "school": "School of Computer Science & AI",
+    "uploaderName": "2503A51302",
+    "uploaderRollNo": "2503A51302",
+    "uploadDate": "Just now",
+    "imageUrl": "/uploads/paper_1791011274_123.jpg",
+    "downloadCount": 1
+  }
+]

@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: sru-paperhub
+    env: python
+    buildCommand: python build_index.py
+    startCommand: python server/server.py
+    envVars:
+      - key: PORT
+        value: 10000
