@@ -1637,6 +1637,7 @@ html_content = '''<!DOCTYPE html>
 
       let uploadedImageUrl = null;
       let cloudSaved = false;
+      let cloudErrorDetail = "";
 
       // 1. If Supabase is connected: Upload image to Supabase Storage & insert row into 'papers' table
       if (supabaseClient) {
@@ -1659,6 +1660,7 @@ html_content = '''<!DOCTYPE html>
             uploadedImageUrl = urlData.publicUrl;
           } else {
             console.warn("Supabase storage upload error:", storageErr);
+            cloudErrorDetail += `Storage error: ${storageErr.message || JSON.stringify(storageErr)}. `;
           }
 
           // Insert into Supabase 'papers' table
@@ -1684,9 +1686,11 @@ html_content = '''<!DOCTYPE html>
             cloudSaved = true;
           } else {
             console.warn("Supabase DB insert error:", dbErr);
+            cloudErrorDetail += `Database error: ${dbErr.message || JSON.stringify(dbErr)}. `;
           }
         } catch (err) {
           console.warn("Supabase upload exception:", err);
+          cloudErrorDetail += `Connection exception: ${err.message || err}. `;
         }
       }
 
@@ -1714,7 +1718,10 @@ html_content = '''<!DOCTYPE html>
         closeUploadModal();
         await fetchPapers();
       } else {
-        alert('Upload failed. Please check your connection or Supabase settings in Admin Panel.');
+        const errorMsg = cloudErrorDetail 
+          ? `Upload failed with Supabase:\n\n${cloudErrorDetail}\n\nTo fix this:\n1. Run the SQL schema in Supabase SQL Editor.\n2. Ensure the 'paper-images' bucket is created and set to Public in Supabase Storage.`
+          : 'Upload failed. Please check your connection or Supabase settings in Admin Panel.';
+        alert(errorMsg);
       }
     }
 
