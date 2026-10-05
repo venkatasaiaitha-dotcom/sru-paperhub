@@ -776,6 +776,8 @@ html_content = '''<!DOCTYPE html>
     let viewerZoomLevel = 1.0;
     let viewerRotationDeg = 0;
     let selectedImageBase64 = null;
+    let selectedImageBlob = null;
+    let selectedImageMime = 'image/webp';
     let selectedFileObj = null;
     let supabaseClient = null;
 
@@ -1559,15 +1561,78 @@ html_content = '''<!DOCTYPE html>
       clearSelectedImage();
     }
 
+    // High-Performance In-Browser Image Optimization (WebP/JPEG Adaptive Compression)
+    async function compressImageFile(file, maxDim = 1600, quality = 0.82) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            let w = img.width;
+            let h = img.height;
+            if (w > maxDim || h > maxDim) {
+              if (w > h) {
+                h = Math.round((h * maxDim) / w);
+                w = maxDim;
+              } else {
+                w = Math.round((w * maxDim) / h);
+                w = maxDim;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, 0, 0, w, h);
+
+            // Prefer WebP for max compression + clarity, fallback to JPEG
+            let mime = 'image/webp';
+            let dataUrl = canvas.toDataURL(mime, quality);
+            if (!dataUrl.startsWith('data:image/webp')) {
+              mime = 'image/jpeg';
+              dataUrl = canvas.toDataURL(mime, quality);
+            }
+
+            canvas.toBlob((blob) => {
+              if (!blob) {
+                const parts = dataUrl.split(',');
+                const byteCharacters = atob(parts[1]);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                  byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                blob = new Blob([new Uint8Array(byteNumbers)], { type: mime });
+              }
+              resolve({
+                blob: blob,
+                dataUrl: dataUrl,
+                mime: mime,
+                width: w,
+                height: h,
+                originalSize: file.size,
+                compressedSize: blob.size
+              });
+            }, mime, quality);
+          };
+          img.onerror = () => reject(new Error('Failed to load image for compression'));
+          img.src = e.target.result;
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
+    }
+
     // File Selection & Security Hardening
-    function handleFileSelection(event) {
+    async function handleFileSelection(event) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
 
-      // File Size Check (Max 10 MB)
-      const MAX_SIZE = 10 * 1024 * 1024;
+      // File Size Check (Max 15 MB)
+      const MAX_SIZE = 15 * 1024 * 1024;
       if (file.size > MAX_SIZE) {
-        alert('File size exceeds the 10MB limit. Please upload a smaller image.');
+        alert('File size exceeds the 15MB limit. Please upload a smaller image.');
         clearSelectedImage();
         return;
       }
@@ -1586,57 +1651,66 @@ html_content = '''<!DOCTYPE html>
       selectedFileObj = file;
       document.getElementById('upload-image-error').style.display = 'none';
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const rawData = e.target.result;
+      if (file.type.startsWith('image/')) {
+        try {
+          document.getElementById('drop-prompt').innerHTML = '<div class="py-3"><i class="fa-solid fa-spinner fa-spin text-2xl text-brandBlue"></i><p class="text-xs font-semibold text-slate-700 mt-2">Optimizing &amp; compressing image...</p></div>';
+          
+          const result = await compressImageFile(file, 1600, 0.82);
+          selectedImageBlob = result.blob;
+          selectedImageBase64 = result.dataUrl;
+          selectedImageMime = result.mime;
 
-        // If image, optimize via canvas to ~200KB for fast performance
-        if (file.type.startsWith('image/')) {
-          const img = new Image();
-          img.onload = () => {
-            const maxDim = 1400;
-            let w = img.width;
-            let h = img.height;
-            if (w > maxDim || h > maxDim) {
-              if (w > h) {
-                h = Math.round((h * maxDim) / w);
-                w = maxDim;
-              } else {
-                w = Math.round((w * maxDim) / h);
-                w = maxDim;
-              }
-            }
-            const canvas = document.createElement('canvas');
-            canvas.width = w;
-            canvas.height = h;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0, w, h);
-            selectedImageBase64 = canvas.toDataURL('image/jpeg', 0.85);
-            showPreview(file.name, file.size, selectedImageBase64);
+          showOptimizedPreview(file.name, result.originalSize, result.compressedSize, result.dataUrl, false);
+        } catch (err) {
+          console.error('Compression error:', err);
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            selectedImageBase64 = e.target.result;
+            selectedImageBlob = file;
+            selectedImageMime = file.type;
+            showOptimizedPreview(file.name, file.size, file.size, selectedImageBase64, false);
           };
-          img.src = rawData;
-        } else {
-          selectedImageBase64 = rawData;
-          showPreview(file.name, file.size, '/images/paper_dsa.svg');
+          reader.readAsDataURL(file);
         }
-      };
-      reader.readAsDataURL(file);
+      } else {
+        // PDF document
+        selectedImageBlob = file;
+        selectedImageMime = 'application/pdf';
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          selectedImageBase64 = e.target.result;
+          showOptimizedPreview(file.name, file.size, file.size, '/images/paper_dsa.svg', true);
+        };
+        reader.readAsDataURL(file);
+      }
     }
 
-    function showPreview(name, size, src) {
+    function showOptimizedPreview(name, origSize, compSize, src, isPdf = false) {
       document.getElementById('drop-prompt').style.display = 'none';
       const previewContainer = document.getElementById('image-preview-container');
       previewContainer.style.display = 'block';
       document.getElementById('image-preview').src = src;
       document.getElementById('image-filename').textContent = name;
-      const sizeKB = Math.round(size / 1024);
-      document.getElementById('image-filesize').textContent = `(${sizeKB} KB)`;
+
+      const origKB = Math.round(origSize / 1024);
+      const compKB = Math.round(compSize / 1024);
+      const savings = origSize > compSize ? Math.round(((origSize - compSize) / origSize) * 100) : 0;
+
+      const sizeBadge = document.getElementById('image-filesize');
+      if (!isPdf && savings > 10) {
+        sizeBadge.innerHTML = `<span class="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">✨ ${compKB} KB (Saved ${savings}%)</span> <span class="text-slate-400 line-through text-[10px]">(${origKB} KB)</span>`;
+      } else {
+        sizeBadge.textContent = `(${compKB} KB)`;
+      }
     }
 
     function clearSelectedImage() {
       selectedImageBase64 = null;
+      selectedImageBlob = null;
+      selectedImageMime = 'image/webp';
       selectedFileObj = null;
       document.getElementById('up-image-file').value = '';
+      document.getElementById('drop-prompt').innerHTML = '<i class="fa-solid fa-camera text-2xl text-slate-400"></i><div class="text-xs font-semibold text-slate-700">Click to capture photo or select file</div><p class="text-[11px] text-slate-400">Clear camera photo or scan of the question paper</p>';
       document.getElementById('drop-prompt').style.display = 'block';
       document.getElementById('image-preview-container').style.display = 'none';
       document.getElementById('image-preview').src = '';
@@ -1698,31 +1772,39 @@ html_content = '''<!DOCTYPE html>
       if (supabaseClient) {
         try {
           // Convert base64 to pure in-memory Blob
-          let blob = null;
-          try {
-            const parts = selectedImageBase64.split(',');
-            const mimeMatch = parts[0].match(/:(.*?);/);
-            const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-            const byteCharacters = atob(parts[1]);
-            const byteArrays = [];
-            const sliceSize = 1024;
-            for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-              const slice = byteCharacters.slice(offset, offset + sliceSize);
-              const byteNumbers = new Array(slice.length);
-              for (let i = 0; i < slice.length; i++) {
-                byteNumbers[i] = slice.charCodeAt(i);
+          let blob = selectedImageBlob;
+          if (!blob && selectedImageBase64) {
+            try {
+              const parts = selectedImageBase64.split(',');
+              const mimeMatch = parts[0].match(/:(.*?);/);
+              const mimeType = mimeMatch ? mimeMatch[1] : 'image/webp';
+              const byteCharacters = atob(parts[1]);
+              const byteArrays = [];
+              const sliceSize = 1024;
+              for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+                const slice = byteCharacters.slice(offset, offset + sliceSize);
+                const byteNumbers = new Array(slice.length);
+                for (let i = 0; i < slice.length; i++) {
+                  byteNumbers[i] = slice.charCodeAt(i);
+                }
+                byteArrays.push(new Uint8Array(byteNumbers));
               }
-              byteArrays.push(new Uint8Array(byteNumbers));
+              blob = new Blob(byteArrays, { type: mimeType });
+            } catch(convErr) {
+              const res = await fetch(selectedImageBase64);
+              blob = await res.blob();
             }
-            blob = new Blob(byteArrays, { type: mimeType });
-          } catch(convErr) {
-            const res = await fetch(selectedImageBase64);
-            blob = await res.blob();
           }
 
-          // Generate safe unique filename (prevent path traversal / malicious filenames)
-          const ext = selectedFileObj ? selectedFileObj.name.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '') : 'jpg';
-          const safeFileName = `${crypto.randomUUID()}.${ext || 'jpg'}`;
+          // Determine safe extension from optimized blob type
+          let ext = 'webp';
+          if (blob && blob.type) {
+            if (blob.type === 'image/jpeg') ext = 'jpg';
+            else if (blob.type === 'image/png') ext = 'png';
+            else if (blob.type === 'application/pdf') ext = 'pdf';
+            else if (blob.type === 'image/webp') ext = 'webp';
+          }
+          const safeFileName = `${crypto.randomUUID()}.${ext}`;
           
           // Secure User-Scoped Storage Path: paper-images/{user_id}/{safeFileName}
           const storagePath = `${currentUser.id}/${safeFileName}`;
@@ -1731,7 +1813,7 @@ html_content = '''<!DOCTYPE html>
           const { data: storageData, error: storageErr } = await supabaseClient
             .storage
             .from('paper-images')
-            .upload(storagePath, blob, { contentType: blob.type || 'image/jpeg', upsert: false });
+            .upload(storagePath, blob, { contentType: blob ? blob.type : 'image/webp', upsert: false });
 
           if (!storageErr) {
             const { data: urlData } = supabaseClient.storage.from('paper-images').getPublicUrl(storagePath);
