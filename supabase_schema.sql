@@ -92,32 +92,26 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 
--- Trigger: Automatically create Profile and auto-confirm users upon signup
+-- Trigger: Automatically create Profile upon signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-  -- Auto-confirm email so student and faculty accounts are immediately usable
-  IF NEW.email_confirmed_at IS NULL THEN
-    NEW.email_confirmed_at := now();
-  END IF;
-
-  -- Create student / user profile
   INSERT INTO public.profiles (id, roll_no, name, email, branch, semester)
   VALUES (
     NEW.id,
-    COALESCE(NEW.raw_user_meta_data->>'roll_no', 'STUDENT'),
-    COALESCE(NEW.raw_user_meta_data->>'name', 'Student'),
-    NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'branch', 'CSE'),
+    COALESCE(NULLIF(TRIM(NEW.raw_user_meta_data->>'roll_no'), ''), 'SRU' || SUBSTRING(NEW.id::text, 1, 6)),
+    COALESCE(NULLIF(TRIM(NEW.raw_user_meta_data->>'name'), ''), SPLIT_PART(COALESCE(NEW.email, 'Student'), '@', 1)),
+    COALESCE(NEW.email, 'user@sru.edu.in'),
+    COALESCE(NULLIF(TRIM(NEW.raw_user_meta_data->>'branch'), ''), 'CSE'),
     COALESCE(NULLIF(NEW.raw_user_meta_data->>'semester', '')::integer, 1)
   )
   ON CONFLICT (id) DO UPDATE SET
-    roll_no = EXCLUDED.roll_no,
-    name = EXCLUDED.name,
-    email = EXCLUDED.email,
-    branch = EXCLUDED.branch,
-    semester = EXCLUDED.semester,
-    updated_at = now();
+    roll_no = COALESCE(NULLIF(TRIM(EXCLUDED.roll_no), ''), public.profiles.roll_no),
+    name = COALESCE(NULLIF(TRIM(EXCLUDED.name), ''), public.profiles.name),
+    email = COALESCE(EXCLUDED.email, public.profiles.email),
+    branch = COALESCE(EXCLUDED.branch, public.profiles.branch),
+    semester = COALESCE(EXCLUDED.semester, public.profiles.semester),
+    updated_at = timezone('utc'::text, now());
 
   -- If admin email, auto-register as admin role
   IF NEW.email = 'admin@sru.edu.in' OR NEW.raw_user_meta_data->>'role' = 'admin' THEN
@@ -127,13 +121,16 @@ BEGIN
   END IF;
 
   RETURN NEW;
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Trigger on auth.users
+-- Trigger on auth.users (Must be AFTER INSERT so auth.users row exists for foreign keys)
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
-  BEFORE INSERT ON auth.users
+  AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 -- Trigger: Prevent student impersonation by automatically binding authenticated UID and verified profile
