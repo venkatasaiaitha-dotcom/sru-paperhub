@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "SR University ExamVault - Question Paper Archive & Contributor Hub Web Portal",
   "scripts": {
+    "build": "echo 'Static build ready'",
     "start": "python server/server.py",
     "test": "python tests/test_api.py"
   },
