@@ -1452,9 +1452,9 @@ html_content = '''<!DOCTYPE html>
               <i class="fa-solid fa-magnifying-glass text-xs"></i>
               <span>View Full Paper</span>
             </button>
-            <a href="${thumbnailSrc}" download="${escapeHTML(paper.subjectCode)}_${escapeHTML(paper.branch)}_${escapeHTML(paper.examType)}.png" target="_blank" onclick="trackDownload('${escapeHTML(paper.id)}')" class="p-2 bg-white hover:bg-blue-50 text-slate-700 hover:text-brandBlue border border-slate-300 rounded-xl transition" title="Direct Download Image">
+            <button type="button" onclick="handleCardDownload('${escapeHTML(paper.id)}', event)" class="p-2 bg-white hover:bg-blue-50 text-slate-700 hover:text-brandBlue border border-slate-300 rounded-xl transition" title="Direct Download Image">
               <i class="fa-solid fa-arrow-down text-xs"></i>
-            </a>
+            </button>
             ${canDelete ? `
               <button type="button" onclick="adminDeletePaper('${escapeHTML(paper.id)}', event)" class="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition border border-red-200" title="Delete Paper">
                 <i class="fa-solid fa-trash-can text-xs"></i>
@@ -1463,6 +1463,57 @@ html_content = '''<!DOCTYPE html>
           </div>
         </div>
       `;
+    }
+
+    // Cross-Origin Safe File Downloader (Fetches blob so browser always downloads file)
+    async function downloadFileFromUrl(url, filename) {
+      if (!url) return;
+      try {
+        const safeUrl = sanitizeUrl(url);
+        // If it's a data URL, directly download
+        if (safeUrl.startsWith('data:')) {
+          const a = document.createElement('a');
+          a.href = safeUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          return;
+        }
+
+        // Fetch cross-origin Supabase Storage image as Blob
+        showToast('Downloading question paper...', 'info');
+        const response = await fetch(safeUrl, { mode: 'cors' });
+        if (!response.ok) throw new Error('Network error: ' + response.statusText);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 3000);
+        showToast('Download complete!', 'success');
+      } catch (err) {
+        console.warn('Direct blob download failed, falling back to window.open:', err);
+        window.open(url, '_blank');
+      }
+    }
+
+    async function handleCardDownload(paperId, event) {
+      if (event) event.stopPropagation();
+      const paper = papersList.find(p => p.id === paperId);
+      if (!paper) return;
+      trackDownload(paper.id);
+      const url = paper.imageUrl;
+      let ext = 'jpg';
+      if (url.includes('.webp')) ext = 'webp';
+      else if (url.includes('.png')) ext = 'png';
+      else if (url.includes('.pdf')) ext = 'pdf';
+      const filename = `${paper.subjectCode}_${paper.branch}_${paper.examType}.${ext}`;
+      await downloadFileFromUrl(url, filename);
     }
 
     // Question Paper Image Viewer Controller
@@ -1512,16 +1563,16 @@ html_content = '''<!DOCTYPE html>
       }
     }
 
-    function downloadActivePaperImage() {
+    async function downloadActivePaperImage() {
       if (!activePaperInViewer) return;
       trackDownload(activePaperInViewer.id);
-      const link = document.createElement('a');
-      link.href = sanitizeUrl(activePaperInViewer.imageUrl);
-      link.download = `${activePaperInViewer.subjectCode}_${activePaperInViewer.branch}_${activePaperInViewer.examType}.png`;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const url = activePaperInViewer.imageUrl;
+      let ext = 'jpg';
+      if (url.includes('.webp')) ext = 'webp';
+      else if (url.includes('.png')) ext = 'png';
+      else if (url.includes('.pdf')) ext = 'pdf';
+      const filename = `${activePaperInViewer.subjectCode}_${activePaperInViewer.branch}_${activePaperInViewer.examType}.${ext}`;
+      await downloadFileFromUrl(url, filename);
     }
 
     async function trackDownload(paperId) {
