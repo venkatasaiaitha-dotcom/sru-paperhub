@@ -223,13 +223,12 @@ CREATE POLICY "Allow public read access to papers"
 ON public.papers FOR SELECT
 USING (true);
 
--- Authenticated students can upload papers
+-- Allow students and visitors to upload papers
 DROP POLICY IF EXISTS "Allow authenticated insert to papers" ON public.papers;
 DROP POLICY IF EXISTS "Allow public insert to papers" ON public.papers;
-CREATE POLICY "Allow authenticated insert to papers"
+CREATE POLICY "Allow public insert to papers"
 ON public.papers FOR INSERT
-TO authenticated
-WITH CHECK (auth.uid() IS NOT NULL);
+WITH CHECK (true);
 
 -- Only paper owner or admin can update paper details
 DROP POLICY IF EXISTS "Allow public update to papers" ON public.papers;
@@ -286,16 +285,13 @@ CREATE POLICY "Public paper images access"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'paper-images');
 
--- Authenticated users can only upload into their own folder: paper-images/{user_id}/...
+-- Allow uploads into paper-images bucket
 DROP POLICY IF EXISTS "Public paper images upload" ON storage.objects;
 DROP POLICY IF EXISTS "Authenticated upload own folder" ON storage.objects;
-CREATE POLICY "Authenticated upload own folder"
+DROP POLICY IF EXISTS "Allow upload to paper-images" ON storage.objects;
+CREATE POLICY "Allow upload to paper-images"
 ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (
-  bucket_id = 'paper-images' AND
-  (storage.foldername(name))[1] = auth.uid()::text
-);
+WITH CHECK (bucket_id = 'paper-images');
 
 -- File owner or Admin can update images
 DROP POLICY IF EXISTS "Allow update own images or admin" ON storage.objects;

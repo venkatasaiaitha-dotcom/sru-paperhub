@@ -1539,13 +1539,7 @@ html_content = '''<!DOCTYPE html>
 
     // Image Upload Modal Controller
     function openUploadModal() {
-      if (isGuest || !currentUser || !currentUser.id) {
-        alert('Please sign in or register with your college account to upload question papers.');
-        showAuthView();
-        return;
-      }
-
-      if (currentUser && currentUser.branch) {
+      if (currentUser && currentUser.branch && currentUser.branch !== 'ALL') {
         document.getElementById('up-branch').value = currentUser.branch;
         document.getElementById('up-semester').value = currentUser.semester;
       }
@@ -1806,8 +1800,9 @@ html_content = '''<!DOCTYPE html>
           }
           const safeFileName = `${crypto.randomUUID()}.${ext}`;
           
-          // Secure User-Scoped Storage Path: paper-images/{user_id}/{safeFileName}
-          const storagePath = `${currentUser.id}/${safeFileName}`;
+          // Storage Path: paper-images/{user_id_or_public}/{safeFileName}
+          const storageFolder = (currentUser && currentUser.id) ? currentUser.id : 'public';
+          const storagePath = `${storageFolder}/${safeFileName}`;
 
           // Upload to Supabase Storage Bucket 'paper-images'
           const { data: storageData, error: storageErr } = await supabaseClient
@@ -1822,10 +1817,10 @@ html_content = '''<!DOCTYPE html>
             cloudErrorDetail += `Storage: ${storageErr.message || JSON.stringify(storageErr)}. `;
           }
 
-          // Insert into Supabase 'papers' table with authenticated user_id
+          // Insert into Supabase 'papers' table
           const { error: dbErr } = await supabaseClient.from('papers').insert({
             id: paperId,
-            user_id: currentUser.id,
+            user_id: (currentUser && currentUser.id) ? currentUser.id : null,
             subject_code: code,
             subject_name: name,
             branch: branch,
@@ -1836,8 +1831,8 @@ html_content = '''<!DOCTYPE html>
             academic_year: year,
             duration: exam.includes('MID') ? '90 Mins' : '3 Hours',
             max_marks: exam.includes('MID') ? 30 : 60,
-            uploader_name: currentUser.name || 'Student',
-            uploader_roll: currentUser.rollNo || 'SRU',
+            uploader_name: (currentUser && currentUser.name) ? currentUser.name : 'Student',
+            uploader_roll: (currentUser && currentUser.rollNo) ? currentUser.rollNo : 'SRU',
             image_url: uploadedImageUrl || selectedImageBase64,
             download_count: 0
           });
