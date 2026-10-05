@@ -1,14 +1,23 @@
+# Environment variables & secrets
+.env
+.env.*
+*.env
+
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
-*.env
 .venv/
 env/
+venv/
 
-# Scratch & temporary logs
+# Scratch & temporary logs/test scripts
 *.log
 tests/
 test_*.py
 check_*.py
 dump.html
+
+# OS metadata
+.DS_Store
+Thumbs.db

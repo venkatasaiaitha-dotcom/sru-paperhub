@@ -6,6 +6,8 @@ import os
 import sys
 import base64
 import time
+import secrets
+import mimetypes
 
 PORT = int(os.environ.get("PORT", 3000))
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -18,7 +20,19 @@ UPLOAD_DIR = os.path.join(PUBLIC_DIR, "uploads")
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "student@2026")
+# Admin password must be provided via environment variable
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
+if not ADMIN_PASSWORD:
+    # Generate ephemeral secret if not set
+    ADMIN_PASSWORD = secrets.token_urlsafe(16)
+    print(f"[SECURITY NOTE] No ADMIN_PASSWORD env var provided. Ephemeral admin key generated: {ADMIN_PASSWORD}")
+
+ALLOWED_MIME_TYPES = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+    "application/pdf": "pdf"
+}
 
 def load_papers():
     try:
@@ -60,7 +74,10 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
         super().__init__(*args, directory=PUBLIC_DIR, **kwargs)
 
     def end_headers(self):
-        # Universal CORS and tunnel headers for cross-device & proxy compatibility
+        # Security headers
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("X-Frame-Options", "DENY")
+        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE")
         self.send_header("Access-Control-Allow-Headers", "*")
@@ -90,10 +107,10 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
 
     def _read_body_json(self):
         content_len = int(self.headers.get("Content-Length", 0))
-        if content_len <= 0:
+        # Enforce max body size of 15MB
+        if content_len <= 0 or content_len > 15 * 1024 * 1024:
             return {}
         
-        # Read exact content length in a loop to handle large payloads over tunnels
         body = b""
         remaining = content_len
         while remaining > 0:
@@ -124,7 +141,7 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({"announcement": load_announcement()})
             return
 
-        # Papers listing (always reads latest from disk so all devices see uploaded papers)
+        # Papers listing
         if path == "/api/papers":
             papers = load_papers()
             branch = query.get("branch", ["ALL"])[0]
@@ -199,16 +216,16 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
         # Admin Login
         elif path == "/api/admin/login":
             password = data.get("password", "")
-            if password == ADMIN_PASSWORD:
-                self._send_json({"success": True, "role": "admin", "token": "sru_admin_valid"})
+            if password and password == ADMIN_PASSWORD:
+                self._send_json({"success": True, "role": "admin", "token": secrets.token_hex(16)})
             else:
-                self._send_json({"success": False, "error": "Invalid Admin Password"}, status=401)
+                self._send_json({"success": False, "error": "Invalid Admin Credentials"}, status=401)
             return
 
         # Admin Delete Paper
         elif path == "/api/admin/delete":
             password = data.get("password", "")
-            if password != ADMIN_PASSWORD:
+            if not password or password != ADMIN_PASSWORD:
                 self._send_json({"success": False, "error": "Unauthorized"}, status=401)
                 return
 
@@ -217,7 +234,6 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
             target_paper = next((p for p in papers if p.get("id") == paper_id), None)
             
             if target_paper:
-                # Remove file if in uploads
                 img_url = target_paper.get("imageUrl", "")
                 if img_url.startswith("/uploads/"):
                     fname = os.path.basename(img_url)
@@ -238,7 +254,7 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
         # Admin Update Announcement
         elif path == "/api/admin/announcement":
             password = data.get("password", "")
-            if password != ADMIN_PASSWORD:
+            if not password or password != ADMIN_PASSWORD:
                 self._send_json({"success": False, "error": "Unauthorized"}, status=401)
                 return
 
@@ -247,7 +263,7 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({"success": True, "announcement": text})
             return
 
-        # Paper Upload (Cross-Device Shared Archive)
+        # Paper Upload (Local Fallback Server)
         elif path == "/api/upload":
             code = data.get("subjectCode", "SUB101").upper()
             name = data.get("subjectName", "Untitled Subject")
@@ -260,26 +276,27 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
             uploader_roll = data.get("uploaderRollNo", "SRU")
             image_data = data.get("imageData", "")
 
-            # If image_data is provided as data URL, save to uploads directory
-            image_url = "/images/paper_dsa.svg"
-            if image_data.startswith("data:image"):
+            # Strict file validation - NO SVG, NO executables
+            image_url = ""
+            if image_data.startswith("data:"):
                 try:
                     header, encoded = image_data.split(",", 1)
-                    ext = "jpg"
-                    if "png" in header:
-                        ext = "png"
-                    elif "webp" in header:
-                        ext = "webp"
-                    elif "svg" in header:
-                        ext = "svg"
+                    mime = header.split(";")[0].replace("data:", "").lower()
+                    if mime not in ALLOWED_MIME_TYPES:
+                        self._send_json({"success": False, "error": "Disallowed file format. Allowed: JPG, PNG, WEBP, PDF."}, status=400)
+                        return
                     
-                    filename = f"paper_{int(time.time())}_{code.lower()}.{ext}"
+                    ext = ALLOWED_MIME_TYPES[mime]
+                    safe_token = secrets.token_hex(8)
+                    filename = f"paper_{int(time.time())}_{safe_token}.{ext}"
                     filepath = os.path.join(UPLOAD_DIR, filename)
                     with open(filepath, "wb") as img_file:
                         img_file.write(base64.b64decode(encoded))
                     image_url = f"/uploads/{filename}"
                 except Exception as e:
-                    print("Error saving image to disk:", e)
+                    print("Error saving upload:", e)
+                    self._send_json({"success": False, "error": "Invalid upload data"}, status=400)
+                    return
 
             exam_labels = {
                 "MID_1": "Mid-Term 1",
@@ -288,7 +305,7 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
                 "SUPPLY": "Supplementary Exam"
             }
 
-            new_id = f"sru_{branch.lower()}_{code.lower()}_{int(time.time())}"
+            new_id = f"sru_{branch.lower()}_{secrets.token_hex(6)}"
             new_paper = {
                 "id": new_id,
                 "subjectCode": code,
@@ -317,8 +334,13 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({"success": True, "paper": new_paper})
             return
 
-        # Clear All Papers
+        # Clear All Papers (Admin Only)
         elif path in ["/api/clear", "/api/admin/clear-all"]:
+            password = data.get("password", "")
+            if not password or password != ADMIN_PASSWORD:
+                self._send_json({"success": False, "error": "Unauthorized"}, status=401)
+                return
+
             save_papers([])
             if os.path.exists(UPLOAD_DIR):
                 for fname in os.listdir(UPLOAD_DIR):
@@ -341,7 +363,6 @@ if __name__ == "__main__":
     host = "0.0.0.0"
     with ThreadingPaperHubServer((host, PORT), PaperHubHandler) as httpd:
         print(f"SR UNIVERSITY PAPERHUB Multi-Threaded Server running on http://{host}:{PORT}")
-        print(f"Tunnel & Mobile Ready (DevTunnels, ngrok, cloudflared, localtunnel)")
         sys.stdout.flush()
         try:
             httpd.serve_forever()
