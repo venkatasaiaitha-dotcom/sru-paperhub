@@ -68,6 +68,12 @@ html_content = r'''<!DOCTYPE html>
           </button>
         </div>
 
+        <!-- Realtime Auth Error/Success Feedback Box -->
+        <div id="auth-feedback-box" style="display: none;" class="mb-4 p-3 rounded-xl text-xs font-semibold items-start space-x-2 border">
+          <i id="auth-feedback-icon" class="fa-solid fa-circle-exclamation mt-0.5 text-sm flex-shrink-0"></i>
+          <div id="auth-feedback-text" class="flex-1 text-[11px] leading-relaxed"></div>
+        </div>
+
         <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
           
           <!-- Full Name (Register Mode only) -->
@@ -89,17 +95,20 @@ html_content = r'''<!DOCTYPE html>
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1">College / Personal Email *</label>
             <div class="relative">
-              <input id="login-email" type="email" required placeholder="e.g. student@sru.edu.in" value="" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue pl-9"/>
+              <input id="login-email" type="email" required placeholder="e.g. student@sru.edu.in" value="" oninput="hideAuthFeedback()" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue pl-9"/>
               <i class="fa-solid fa-envelope absolute left-3 top-3 text-slate-400 text-xs"></i>
             </div>
           </div>
 
-          <!-- Password -->
+          <!-- Password with Show/Hide Toggle -->
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1">Password *</label>
             <div class="relative">
-              <input id="login-password" type="password" required placeholder="Enter your password (min 6 chars)" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue pl-9"/>
+              <input id="login-password" type="password" required placeholder="Enter your password (min 6 chars)" oninput="hideAuthFeedback()" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue pl-9 pr-9"/>
               <i class="fa-solid fa-lock absolute left-3 top-3 text-slate-400 text-xs"></i>
+              <button type="button" onclick="togglePasswordVisibility('login-password', 'toggle-pass-icon')" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none p-0.5" title="Show/Hide Password">
+                <i id="toggle-pass-icon" class="fa-regular fa-eye text-xs"></i>
+              </button>
             </div>
           </div>
 
@@ -1032,6 +1041,58 @@ html_content = r'''<!DOCTYPE html>
       const fieldSem = document.getElementById('field-sem');
       const submitBtn = document.getElementById('auth-submit-btn');
 
+    function showAuthFeedback(message, type = 'error') {
+      const box = document.getElementById('auth-feedback-box');
+      const text = document.getElementById('auth-feedback-text');
+      const icon = document.getElementById('auth-feedback-icon');
+      if (!box || !text) return;
+
+      if (type === 'error') {
+        box.className = "mb-4 p-3 rounded-xl text-xs font-semibold flex items-start space-x-2 bg-red-50 text-red-900 border border-red-200";
+        icon.className = "fa-solid fa-circle-exclamation mt-0.5 text-sm flex-shrink-0 text-red-600";
+      } else if (type === 'success') {
+        box.className = "mb-4 p-3 rounded-xl text-xs font-semibold flex items-start space-x-2 bg-emerald-50 text-emerald-900 border border-emerald-200";
+        icon.className = "fa-solid fa-circle-check mt-0.5 text-sm flex-shrink-0 text-emerald-600";
+      } else {
+        box.className = "mb-4 p-3 rounded-xl text-xs font-semibold flex items-start space-x-2 bg-blue-50 text-blue-900 border border-blue-200";
+        icon.className = "fa-solid fa-circle-info mt-0.5 text-sm flex-shrink-0 text-brandBlue";
+      }
+
+      text.innerHTML = message;
+      box.style.display = 'flex';
+    }
+
+    function hideAuthFeedback() {
+      const box = document.getElementById('auth-feedback-box');
+      if (box) box.style.display = 'none';
+      const passInput = document.getElementById('login-password');
+      if (passInput) passInput.classList.remove('border-red-500', 'ring-2', 'ring-red-200');
+    }
+
+    function togglePasswordVisibility(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (!input || !icon) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fa-regular fa-eye-slash text-xs text-brandBlue';
+      } else {
+        input.type = 'password';
+        icon.className = 'fa-regular fa-eye text-xs text-slate-400';
+      }
+    }
+
+    function setAuthTab(mode) {
+      currentAuthMode = mode;
+      hideAuthFeedback();
+      const tabLogin = document.getElementById('auth-tab-login');
+      const tabRegister = document.getElementById('auth-tab-register');
+      const fieldName = document.getElementById('field-name');
+      const fieldRoll = document.getElementById('field-roll');
+      const fieldBranch = document.getElementById('field-branch');
+      const fieldSem = document.getElementById('field-sem');
+      const submitBtn = document.getElementById('auth-submit-btn');
+
       if (mode === 'login') {
         tabLogin.className = "flex-1 pb-3 border-b-2 border-brandBlue text-brandBlue font-bold transition";
         tabRegister.className = "flex-1 pb-3 text-slate-400 hover:text-slate-600 transition";
@@ -1054,12 +1115,14 @@ html_content = r'''<!DOCTYPE html>
     // Handle Student Authentication (Supabase Auth SignUp / SignIn)
     async function handleAuthSubmit(event) {
       event.preventDefault();
+      hideAuthFeedback();
+
       const email = document.getElementById('login-email').value.trim().toLowerCase();
       const password = document.getElementById('login-password').value;
       const submitBtn = document.getElementById('auth-submit-btn');
 
       if (!email || !password) {
-        alert('Please enter both your email address and password.');
+        showAuthFeedback('Please enter both your email address and password.', 'error');
         return;
       }
 
@@ -1073,7 +1136,8 @@ html_content = r'''<!DOCTYPE html>
         const semester = parseInt(document.getElementById('login-sem').value) || 1;
 
         if (password.length < 6) {
-          alert('Password must be at least 6 characters long.');
+          showAuthFeedback('Password must be at least 6 characters long.', 'error');
+          document.getElementById('login-password').focus();
           submitBtn.disabled = false;
           submitBtn.innerHTML = '<span>Register &amp; Continue</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
           return;
@@ -1090,28 +1154,57 @@ html_content = r'''<!DOCTYPE html>
             });
 
             if (error) {
-              alert('Registration failed: ' + error.message);
+              if (error.message.toLowerCase().includes('already registered') || error.message.toLowerCase().includes('user already exists')) {
+                showAuthFeedback(`An account with <strong>${escapeHTML(email)}</strong> already exists. Please switch to the <a href="javascript:void(0)" onclick="setAuthTab('login')" class="underline font-bold text-brandBlue">Sign In</a> tab and enter your password.`, 'error');
+              } else {
+                showAuthFeedback('Registration failed: ' + escapeHTML(error.message), 'error');
+              }
               submitBtn.disabled = false;
               submitBtn.innerHTML = '<span>Register &amp; Continue</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
               return;
             }
 
-            if (data && data.user) {
-              await applyAuthenticatedUser(data.user);
-              await recordLoginTracking(data.user.id);
-              showToast('Registered and authenticated successfully!', 'success');
-              initDashboard();
+            // If Supabase returns empty identities on existing email
+            if (data && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+              showAuthFeedback(`An account with <strong>${escapeHTML(email)}</strong> already exists. Please switch to the <a href="javascript:void(0)" onclick="setAuthTab('login')" class="underline font-bold text-brandBlue">Sign In</a> tab.`, 'error');
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = '<span>Register &amp; Continue</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
               return;
             }
+
+            // If session is immediately active
+            if (data && data.session && data.user) {
+              showAuthFeedback('Account registered and verified! Logging you in...', 'success');
+              await applyAuthenticatedUser(data.user);
+              await recordLoginTracking(data.user.id);
+              showToast('Account registered and logged in!', 'success');
+              setTimeout(() => initDashboard(), 300);
+              return;
+            }
+
+            // Attempt immediate login with the registered password
+            const { data: signInData, error: signInErr } = await supabaseClient.auth.signInWithPassword({
+              email,
+              password
+            });
+
+            if (!signInErr && signInData && signInData.user) {
+              showAuthFeedback('Account created and logged in successfully!', 'success');
+              await applyAuthenticatedUser(signInData.user);
+              await recordLoginTracking(signInData.user.id);
+              showToast('Welcome to SRU PaperHub!', 'success');
+              setTimeout(() => initDashboard(), 300);
+              return;
+            }
+
+            showAuthFeedback('Account created! Please switch to Sign In and enter your password.', 'success');
+            setAuthTab('login');
           } catch(err) {
-            alert('Registration error: ' + err.message);
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<span>Register &amp; Continue</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
-            return;
+            showAuthFeedback('Registration error: ' + escapeHTML(err.message || err), 'error');
           }
         }
       } else {
-        // Student Sign In
+        // Student Sign In Mode
         if (supabaseClient) {
           try {
             const { data, error } = await supabaseClient.auth.signInWithPassword({
@@ -1120,24 +1213,32 @@ html_content = r'''<!DOCTYPE html>
             });
 
             if (error) {
-              alert('Sign In failed: ' + error.message);
+              const passInput = document.getElementById('login-password');
+              if (passInput) passInput.classList.add('border-red-500', 'ring-2', 'ring-red-200');
+
+              if (error.message.toLowerCase().includes('invalid login credentials') || error.message.toLowerCase().includes('invalid grant')) {
+                showAuthFeedback('❌ <strong>Incorrect Password or Email</strong><br>Please enter the exact password you used during registration. If you haven\'t created an account yet, click <a href="javascript:void(0)" onclick="setAuthTab(\'register\')" class="underline font-bold text-brandBlue">Create Account</a>.', 'error');
+              } else if (error.message.toLowerCase().includes('email not confirmed')) {
+                showAuthFeedback('⚠️ <strong>Email Not Confirmed</strong><br>Please check your inbox to confirm your email address.', 'error');
+              } else {
+                showAuthFeedback('Sign In failed: ' + escapeHTML(error.message), 'error');
+              }
+
               submitBtn.disabled = false;
               submitBtn.innerHTML = '<span>Sign In to Dashboard</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
               return;
             }
 
             if (data && data.user) {
+              showAuthFeedback('Password verified! Loading your dashboard...', 'success');
               await applyAuthenticatedUser(data.user);
               await recordLoginTracking(data.user.id);
               showToast('Signed in successfully!', 'success');
-              initDashboard();
+              setTimeout(() => initDashboard(), 300);
               return;
             }
           } catch(err) {
-            alert('Sign In error: ' + err.message);
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<span>Sign In to Dashboard</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
-            return;
+            showAuthFeedback('Sign In error: ' + escapeHTML(err.message || err), 'error');
           }
         }
       }
