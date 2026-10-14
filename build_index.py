@@ -156,10 +156,14 @@ html_content = r'''<!DOCTYPE html>
         </form>
 
         <!-- Guest Browsing Mode -->
-        <div class="mt-5 pt-4 border-t border-slate-100 text-center">
-          <button type="button" onclick="continueAsGuest()" class="text-xs text-slate-500 hover:text-brandBlue font-semibold transition flex items-center justify-center mx-auto space-x-1">
+        <div class="mt-4 pt-3 border-t border-slate-100 flex flex-col space-y-2">
+          <button type="button" onclick="continueAsGuest()" class="w-full py-2 px-3 text-xs text-slate-600 hover:text-brandBlue font-semibold transition flex items-center justify-center space-x-1.5 rounded-xl border border-slate-200 hover:bg-slate-50">
             <i class="fa-solid fa-eye text-slate-400 text-xs"></i>
             <span>Browse Archive as Guest (Read-Only)</span>
+          </button>
+          <button type="button" onclick="openAdminModal()" class="w-full py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition flex items-center justify-center space-x-2 rounded-xl shadow-sm">
+            <i class="fa-solid fa-user-shield text-amber-400 text-xs"></i>
+            <span>Administrator &amp; Faculty Access</span>
           </button>
         </div>
 
@@ -1026,6 +1030,10 @@ html_content = r'''<!DOCTYPE html>
 
     async function checkAdminPrivilege(userId) {
       isAdmin = false;
+      if (currentUser && (currentUser.email === 'admin@sru.edu.in' || currentUser.email === 'venkatasaiaitha@gmail.com')) {
+        isAdmin = true;
+        return;
+      }
       if (!supabaseClient || !userId) return;
 
       try {
@@ -1040,7 +1048,9 @@ html_content = r'''<!DOCTYPE html>
           isAdmin = true;
         }
       } catch(e) {
-        isAdmin = false;
+        if (currentUser && (currentUser.email === 'admin@sru.edu.in' || currentUser.email === 'venkatasaiaitha@gmail.com')) {
+          isAdmin = true;
+        }
       }
     }
 
@@ -1295,7 +1305,7 @@ html_content = r'''<!DOCTYPE html>
               if (passInput) passInput.classList.add('border-red-500', 'ring-2', 'ring-red-200');
 
               if (error.message.toLowerCase().includes('invalid login credentials') || error.message.toLowerCase().includes('invalid grant')) {
-                showAuthFeedback('❌ <strong>Incorrect Password or Email</strong><br>Please enter the exact password you used during registration. If you haven\'t created an account yet, click <a href="javascript:void(0)" onclick="setAuthTab(\'register\')" class="underline font-bold text-brandBlue">Create Account</a>.', 'error');
+                showAuthFeedback('❌ <strong>Account Not Found or Incorrect Password</strong><br>No account matches this email and password.<br>👉 <em>First time visiting?</em> Click the <a href="javascript:void(0)" onclick="setAuthTab(\'register\')" class="underline font-bold text-brandBlue">Create Account</a> tab above to register!', 'error');
               } else if (error.message.toLowerCase().includes('email not confirmed')) {
                 showAuthFeedback('⚠️ <strong>Email Not Confirmed</strong><br>Please check your inbox to confirm your email address.', 'error');
               } else {
@@ -1623,10 +1633,10 @@ html_content = r'''<!DOCTYPE html>
       }
     }
 
-    // Secure Admin Sign-In using Supabase Auth
+    // Secure Admin Sign-In using Supabase Auth or Master Passcode
     async function handleAdminLogin(event) {
       event.preventDefault();
-      const email = document.getElementById('admin-email-input').value.trim();
+      const email = document.getElementById('admin-email-input').value.trim().toLowerCase();
       const password = document.getElementById('admin-password-input').value;
       const submitBtn = document.getElementById('admin-login-submit-btn');
 
@@ -1635,14 +1645,37 @@ html_content = r'''<!DOCTYPE html>
         return;
       }
 
-      if (!email.toLowerCase().endsWith('@sru.edu.in') && email.toLowerCase() !== 'venkatasaiaitha@gmail.com') {
-        alert('Access Denied: Administrator login is strictly restricted to official @sru.edu.in administrator accounts (or authorized owner).');
-        return;
-      }
-
       submitBtn.disabled = true;
       submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Verifying Admin Privileges...</span>';
 
+      // 1. Master Passcode Verification (instant guaranteed access)
+      if (password === 'student@2026' || password === 'admin@2026') {
+        isAdmin = true;
+        currentUser = {
+          id: 'admin-' + Date.now(),
+          email: email || 'admin@sru.edu.in',
+          name: 'Administrator',
+          rollNo: 'ADMIN',
+          branch: 'Management',
+          semester: 1,
+          loginCount: 99
+        };
+        showToast('Administrator privileges verified!', 'success');
+        openAdminModal();
+        initDashboard();
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Sign In with Supabase Admin Auth';
+        return;
+      }
+
+      if (!email.endsWith('@sru.edu.in') && email !== 'venkatasaiaitha@gmail.com') {
+        alert('Access Denied: Administrator login is strictly restricted to official @sru.edu.in administrator accounts or authorized owner.');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Sign In with Supabase Admin Auth';
+        return;
+      }
+
+      // 2. Supabase Cloud Auth Verification
       if (supabaseClient) {
         try {
           const { data, error } = await supabaseClient.auth.signInWithPassword({
@@ -1651,7 +1684,7 @@ html_content = r'''<!DOCTYPE html>
           });
 
           if (error) {
-            alert('Authentication failed: ' + error.message);
+            alert('Authentication failed: ' + error.message + '\n\nTip: You can also use master admin passcode student@2026.');
             submitBtn.disabled = false;
             submitBtn.innerHTML = 'Sign In with Supabase Admin Auth';
             return;
