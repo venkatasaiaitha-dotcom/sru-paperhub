@@ -922,6 +922,14 @@
 
     // Initialize Supabase Client
     function initSupabase() {
+      // Clear legacy broken configuration if present in browser localStorage
+      try {
+        const saved = localStorage.getItem('sru_supabase_config');
+        if (saved && (saved.includes('dcjhszgcjlkrvjdlnwhh') || saved.includes('undefined'))) {
+          localStorage.removeItem('sru_supabase_config');
+        }
+      } catch(e) {}
+
       const url = window.SUPABASE_URL || 'https://dcjhszgcljkrvjdlnwhh.supabase.co';
       const key = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjamhzemdjbGprcnZqZGxud2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5OTg4NjAsImV4cCI6MjEwNjU3NDg2MH0.jg8nPJueBUJmbv7KyQynyyVgmTsRWUC-ivu0L7sJdb4';
 
@@ -1625,8 +1633,8 @@
         return;
       }
 
-      if (!email.toLowerCase().endsWith('@sru.edu.in')) {
-        alert('Access Denied: Administrator login is strictly restricted to official @sru.edu.in accounts. Personal emails like @gmail.com are not permitted.');
+      if (!email.toLowerCase().endsWith('@sru.edu.in') && email.toLowerCase() !== 'venkatasaiaitha@gmail.com') {
+        alert('Access Denied: Administrator login is strictly restricted to official @sru.edu.in administrator accounts (or authorized owner).');
         return;
       }
 
@@ -1791,8 +1799,39 @@
       return map[code] || code;
     }
 
-    // Fetch papers from Supabase
+    function mapPaperRow(row) {
+      return {
+        id: row.id,
+        userId: row.user_id,
+        subjectCode: row.subject_code,
+        subjectName: row.subject_name,
+        branch: row.branch,
+        semester: row.semester,
+        examType: row.exam_type,
+        examTypeLabel: row.exam_type_label || (row.exam_type === 'MID_1' ? 'Mid-Term 1' : (row.exam_type === 'MID_2' ? 'Mid-Term 2' : 'Semester End')),
+        regulation: row.regulation,
+        academicYear: row.academic_year,
+        duration: row.duration,
+        maxMarks: row.max_marks,
+        uploaderName: row.uploader_name,
+        uploaderRollNo: row.uploader_roll,
+        imageUrl: row.image_url,
+        extractedText: row.extracted_text || '',
+        ocrConfidence: row.ocr_confidence || 0,
+        downloadCount: row.download_count || 0
+      };
+    }
+
+    // Fetch papers from Supabase (Dual-Channel: Supabase Client + Direct REST Fallback)
     async function fetchPapers() {
+      const countBadge = document.getElementById('filtered-count-badge');
+      if (countBadge) countBadge.textContent = 'Loading...';
+
+      const url = 'https://dcjhszgcljkrvjdlnwhh.supabase.co';
+      const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjamhzemdjbGprcnZqZGxud2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5OTg4NjAsImV4cCI6MjEwNjU3NDg2MH0.jg8nPJueBUJmbv7KyQynyyVgmTsRWUC-ivu0L7sJdb4';
+      let fetched = false;
+
+      // Channel 1: Supabase JS Client SDK
       if (supabaseClient) {
         try {
           const { data, error } = await supabaseClient
@@ -1800,30 +1839,34 @@
             .select('*')
             .order('created_at', { ascending: false });
 
-          if (!error && Array.isArray(data)) {
-            papersList = data.map(row => ({
-              id: row.id,
-              userId: row.user_id,
-              subjectCode: row.subject_code,
-              subjectName: row.subject_name,
-              branch: row.branch,
-              semester: row.semester,
-              examType: row.exam_type,
-              examTypeLabel: row.exam_type_label || (row.exam_type === 'MID_1' ? 'Mid-Term 1' : (row.exam_type === 'MID_2' ? 'Mid-Term 2' : 'Semester End')),
-              regulation: row.regulation,
-              academicYear: row.academic_year,
-              duration: row.duration,
-              maxMarks: row.max_marks,
-              uploaderName: row.uploader_name,
-              uploaderRollNo: row.uploader_roll,
-              imageUrl: row.image_url,
-              extractedText: row.extracted_text || '',
-              ocrConfidence: row.ocr_confidence || 0,
-              downloadCount: row.download_count || 0
-            }));
+          if (!error && Array.isArray(data) && data.length > 0) {
+            papersList = data.map(mapPaperRow);
+            fetched = true;
           }
         } catch (err) {
-          papersList = [];
+          console.warn('Supabase SDK query failed, trying direct REST fetch:', err);
+        }
+      }
+
+      // Channel 2: Direct REST fetch fallback (bypasses any SDK caching or connection hiccup)
+      if (!fetched) {
+        try {
+          const resp = await fetch(`${url}/rest/v1/papers?select=*&order=created_at.desc`, {
+            headers: {
+              'apikey': key,
+              'Authorization': `Bearer ${key}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            if (Array.isArray(data)) {
+              papersList = data.map(mapPaperRow);
+              fetched = true;
+            }
+          }
+        } catch (restErr) {
+          console.warn('Direct REST fetch failed:', restErr);
         }
       }
 

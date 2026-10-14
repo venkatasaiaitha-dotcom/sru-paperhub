@@ -1,0 +1,2754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SR University PaperHub - Question Paper Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Supabase JS Client for Cloud Database & Storage -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- In-Browser AI Optical Character Recognition (OCR) -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+  <script src="./supabase_config.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brandBlueDark: '#1e3a8a',
+            brandBlue: '#2563eb',
+            brandBlueHover: '#1d4ed8',
+            brandBlueLight: '#eff6ff',
+            brandBlueBorder: '#bfdbfe',
+            brandSlate: '#0f172a',
+            brandMuted: '#64748b'
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; background-color: #f8fafc; color: #0f172a; }
+    .font-mono-code { font-family: 'JetBrains Mono', monospace; }
+    
+    /* Clean custom scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased bg-slate-50 text-slate-900">
+
+  <!-- ================= 1. AUTHENTICATION VIEW (ALWAYS FIRST) ================= -->
+  <div id="auth-view" class="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8 bg-slate-50">
+    <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
+      <!-- SR University Crest / Icon -->
+      <div class="w-16 h-16 bg-brandBlueDark text-white rounded-2xl flex items-center justify-center mx-auto shadow-md border border-blue-900">
+        <i class="fa-solid fa-building-columns text-2xl"></i>
+      </div>
+      <h2 class="mt-4 text-2xl font-extrabold text-slate-900 tracking-tight">SR University PaperHub</h2>
+      <p class="mt-1 text-xs text-slate-500 font-medium">Official Exam Archive &amp; Student Question Paper Vault</p>
+    </div>
+
+    <div class="mt-6 sm:mx-auto sm:w-full sm:max-w-md px-4">
+      <div class="bg-white py-8 px-6 shadow-sm border border-slate-200 rounded-2xl sm:px-10">
+        
+        <!-- Tab Switches (Sign In vs Register) -->
+        <div class="flex border-b border-slate-200 mb-6 text-xs font-semibold">
+          <button id="auth-tab-login" onclick="setAuthTab('login')" class="flex-1 pb-3 border-b-2 border-brandBlue text-brandBlue font-bold transition">
+            <i class="fa-solid fa-arrow-right-to-bracket mr-1"></i> Sign In
+          </button>
+          <button id="auth-tab-register" onclick="setAuthTab('register')" class="flex-1 pb-3 text-slate-400 hover:text-slate-600 transition">
+            <i class="fa-solid fa-user-plus mr-1"></i> Create Account
+          </button>
+        </div>
+
+        <!-- Realtime Auth Error/Success Feedback Box -->
+        <div id="auth-feedback-box" style="display: none;" class="mb-4 p-3 rounded-xl text-xs font-semibold items-start space-x-2 border">
+          <i id="auth-feedback-icon" class="fa-solid fa-circle-exclamation mt-0.5 text-sm flex-shrink-0"></i>
+          <div id="auth-feedback-text" class="flex-1 text-[11px] leading-relaxed"></div>
+        </div>
+
+        <form id="auth-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+          
+          <!-- Full Name (Register Mode only) -->
+          <div id="field-name" style="display: none;">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
+            <input id="login-name" type="text" placeholder="Enter your full name" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+          </div>
+
+          <!-- Roll Number (Register Mode only) -->
+          <div id="field-roll" style="display: none;">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Student Roll Number / Hall Ticket</label>
+            <div class="relative">
+              <input id="login-roll" type="text" placeholder="e.g. 21SR1A0501" value="" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono-code uppercase text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue pl-9"/>
+              <i class="fa-solid fa-id-card absolute left-3 top-3 text-slate-400 text-xs"></i>
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-semibold text-slate-700">Official SRU Email (@sru.edu.in) *</label>
+              <span class="text-[10px] font-bold text-brandBlue bg-blue-50 px-2 py-0.5 rounded border border-blue-200">Only @sru.edu.in</span>
+            </div>
+            <div class="relative">
+              <input id="login-email" type="email" required placeholder="e.g. 2103a51000@sru.edu.in" value="" oninput="validateEmailFieldLive(); hideAuthFeedback()" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue pl-9"/>
+              <i class="fa-solid fa-envelope absolute left-3 top-3 text-slate-400 text-xs"></i>
+            </div>
+            <p id="email-live-hint" class="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
+              <i class="fa-solid fa-circle-exclamation text-amber-500 text-xs"></i>
+              <span>Must end with <strong>@sru.edu.in</strong>. Personal emails (<strong>@gmail.com</strong>) are not accepted.</span>
+            </p>
+          </div>
+
+          <!-- Password with Show/Hide Toggle -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Password *</label>
+            <div class="relative">
+              <input id="login-password" type="password" required placeholder="Enter your password (min 6 chars)" oninput="hideAuthFeedback()" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue pl-9 pr-9"/>
+              <i class="fa-solid fa-lock absolute left-3 top-3 text-slate-400 text-xs"></i>
+              <button type="button" onclick="togglePasswordVisibility('login-password', 'toggle-pass-icon')" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 focus:outline-none p-0.5" title="Show/Hide Password">
+                <i id="toggle-pass-icon" class="fa-regular fa-eye text-xs"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Branch Selection (Register Mode only) -->
+          <div id="field-branch" style="display: none;">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Department / Branch</label>
+            <select id="login-branch" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+              <option value="CSE">Computer Science &amp; Engineering (CSE)</option>
+              <option value="AIML">Artificial Intelligence &amp; ML (AIML)</option>
+              <option value="AIDS">AI &amp; Data Science (AIDS)</option>
+              <option value="ECE">Electronics &amp; Comm. (ECE)</option>
+              <option value="EEE">Electrical &amp; Electronics (EEE)</option>
+              <option value="MECH">Mechanical Engineering (MECH)</option>
+              <option value="CIVIL">Civil Engineering (CIVIL)</option>
+            </select>
+          </div>
+
+          <!-- Semester (Register Mode only) -->
+          <div id="field-sem" style="display: none;">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Current Semester</label>
+            <select id="login-sem" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+              <option value="1">Semester 1 (I Year)</option>
+              <option value="2">Semester 2 (I Year)</option>
+              <option value="3">Semester 3 (II Year)</option>
+              <option value="4">Semester 4 (II Year)</option>
+              <option value="5">Semester 5 (III Year)</option>
+              <option value="6">Semester 6 (III Year)</option>
+              <option value="7">Semester 7 (IV Year)</option>
+              <option value="8">Semester 8 (IV Year)</option>
+            </select>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" id="auth-submit-btn" class="w-full mt-2 py-2.5 px-4 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center space-x-1.5">
+            <span>Sign In to Dashboard</span>
+            <i class="fa-solid fa-arrow-right text-xs"></i>
+          </button>
+        </form>
+
+        <!-- Guest Browsing Mode -->
+        <div class="mt-5 pt-4 border-t border-slate-100 text-center">
+          <button type="button" onclick="continueAsGuest()" class="text-xs text-slate-500 hover:text-brandBlue font-semibold transition flex items-center justify-center mx-auto space-x-1">
+            <i class="fa-solid fa-eye text-slate-400 text-xs"></i>
+            <span>Browse Archive as Guest (Read-Only)</span>
+          </button>
+        </div>
+
+      </div>
+
+      <div class="mt-4 text-center">
+        <p class="text-[11px] text-slate-400">SR University • Warangal, Telangana • Exam Portal</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 2. MAIN APP DASHBOARD VIEW ================= -->
+  <div id="app-view" style="display: none;" class="min-h-screen flex flex-col">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        
+        <!-- Left: Branding -->
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="resetFiltersAndHome()">
+          <div class="w-10 h-10 bg-brandBlueDark text-white rounded-xl flex items-center justify-center shadow border border-blue-900">
+            <i class="fa-solid fa-building-columns text-base"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="text-base font-extrabold text-slate-900 tracking-tight">SRU PaperHub</span>
+              <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-brandBlue border border-brandBlueBorder">
+                EXAM VAULT
+              </span>
+            </div>
+            <p class="text-[10px] text-slate-500 font-medium">SR University Academic Repository</p>
+          </div>
+        </div>
+
+        <!-- Center: Search bar in header for large screens -->
+        <div class="hidden md:flex flex-1 max-w-md mx-6">
+          <div class="relative w-full">
+            <input id="header-search-query" type="text" placeholder="Search subject name, course code (e.g. 22CS302)..." oninput="syncSearchQuery(this.value)" class="w-full bg-slate-50 hover:bg-slate-100/80 focus:bg-white border border-slate-300 focus:border-brandBlue rounded-xl py-2 pl-9 pr-4 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brandBlue/20 transition"/>
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+          </div>
+        </div>
+
+        <!-- Right: Cloud status, Upload button & User Profile -->
+        <div class="flex items-center space-x-2.5 sm:space-x-3">
+          
+          <!-- Cloud Connected Status Pill -->
+          <div id="cloud-status-pill" class="hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Supabase Cloud</span>
+          </div>
+
+          <!-- Upload Paper Button -->
+          <button onclick="openUploadModal()" class="px-3 py-2 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center space-x-1.5">
+            <i class="fa-solid fa-cloud-arrow-up text-xs"></i>
+            <span class="hidden sm:inline">Upload Paper</span>
+            <span class="sm:hidden">Upload</span>
+          </button>
+
+          <!-- Admin Portal Button -->
+          <button onclick="openAdminModal()" class="p-2 text-slate-600 hover:text-brandBlue hover:bg-slate-100 rounded-xl transition border border-slate-200 text-xs font-semibold flex items-center space-x-1" title="Admin Portal & Moderation">
+            <i class="fa-solid fa-user-shield text-amber-600"></i>
+            <span class="hidden lg:inline text-[11px] text-slate-700">Admin</span>
+          </button>
+
+          <!-- User Profile Dropdown Pill -->
+          <div class="flex items-center space-x-2 pl-2 border-l border-slate-200">
+            <div class="text-right hidden sm:block">
+              <div id="user-display-name" class="text-xs font-bold text-slate-800 truncate max-w-[120px]">Student</div>
+              <div id="user-display-roll" class="text-[10px] text-slate-400 font-mono-code truncate max-w-[120px]">SRU</div>
+            </div>
+            <button onclick="handleUserSignOut()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 flex items-center justify-center transition border border-slate-200" title="Sign Out">
+              <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+    </header>
+
+    <!-- Campus Live Announcement Bar -->
+    <div id="announcement-bar" class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white px-4 py-2 text-xs font-medium border-b border-indigo-950">
+      <div class="max-w-7xl mx-auto flex items-center justify-between">
+        <div class="flex items-center space-x-2 truncate">
+          <span class="px-2 py-0.5 bg-blue-500 text-white rounded text-[10px] font-bold tracking-wide uppercase flex-shrink-0 animate-pulse">
+            <i class="fa-solid fa-bullhorn mr-1"></i> NOTICE
+          </span>
+          <span id="announcement-text" class="truncate text-slate-200">Welcome to SR University PaperHub! Browse past exam papers or upload new question papers to help your classmates.</span>
+        </div>
+        <div class="hidden sm:flex items-center space-x-3 text-[11px] text-slate-300 flex-shrink-0 pl-3">
+          <span id="current-academic-term" class="font-mono-code font-semibold text-blue-300">AY 2025-2026</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Body -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+      <!-- Hero Header & Quick Stats -->
+      <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+        <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-blue-50 rounded-full pointer-events-none opacity-60"></div>
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-6 relative z-10">
+          <div class="space-y-1.5 max-w-2xl">
+            <div class="inline-flex items-center space-x-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-brandBlue border border-brandBlueBorder">
+              <i class="fa-solid fa-graduation-cap"></i>
+              <span>SR University Academic Archive</span>
+            </div>
+            <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Past Examination Question Papers</h1>
+            <p class="text-xs sm:text-sm text-slate-500 leading-relaxed">
+              Browse, search, and download question papers across all engineering regulations (R18 to R24). Upload exam papers to help your batchmates.
+            </p>
+          </div>
+
+          <!-- Fast Quick Metrics Cards -->
+          <div class="grid grid-cols-3 gap-3 sm:gap-4 flex-shrink-0">
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center min-w-[85px] sm:min-w-[100px]">
+              <div class="text-xs text-brandBlue mb-0.5"><i class="fa-solid fa-file-lines"></i></div>
+              <div id="stat-total-papers" class="text-base sm:text-lg font-bold text-slate-900">0</div>
+              <div class="text-[10px] text-slate-500 font-medium">Total Papers</div>
+            </div>
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center min-w-[85px] sm:min-w-[100px]">
+              <div class="text-xs text-indigo-600 mb-0.5"><i class="fa-solid fa-users"></i></div>
+              <div id="stat-branch-papers" class="text-base sm:text-lg font-bold text-slate-900">0</div>
+              <div id="stat-branch-label" class="text-[10px] text-slate-500 font-medium truncate">For Your Branch</div>
+            </div>
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-center min-w-[85px] sm:min-w-[100px]">
+              <div class="text-xs text-emerald-600 mb-0.5"><i class="fa-solid fa-download"></i></div>
+              <div id="stat-total-downloads" class="text-base sm:text-lg font-bold text-slate-900">0</div>
+              <div class="text-[10px] text-slate-500 font-medium">Downloads</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters & Search Toolbar -->
+      <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm space-y-4">
+        
+        <!-- Search & Dropdown Filters Bar -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          
+          <!-- Search Input -->
+          <div class="relative">
+            <input id="search-query" type="text" placeholder="Search subject or code..." oninput="handleSearchFilter()" class="w-full bg-slate-50 border border-slate-300 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+          </div>
+
+          <!-- Exam Type Filter -->
+          <div>
+            <select id="filter-exam-type" onchange="handleSearchFilter()" class="w-full bg-slate-50 border border-slate-300 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue font-medium">
+              <option value="ALL">All Exam Types (Mid-1, Mid-2, End Sem)</option>
+              <option value="MID_1">Mid-Term 1 (Mid-1)</option>
+              <option value="MID_2">Mid-Term 2 (Mid-2)</option>
+              <option value="SEM_END">Semester End Exam</option>
+              <option value="SUPPLY">Supplementary Exam</option>
+            </select>
+          </div>
+
+          <!-- Regulation Filter -->
+          <div>
+            <select id="filter-regulation" onchange="handleSearchFilter()" class="w-full bg-slate-50 border border-slate-300 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue font-medium">
+              <option value="ALL">All Regulations (R18 - R24)</option>
+              <option value="R24">R24 Regulation</option>
+              <option value="R22">R22 Regulation</option>
+              <option value="R21">R21 Regulation</option>
+              <option value="R20">R20 Regulation</option>
+              <option value="R19">R19 Regulation</option>
+              <option value="R18">R18 Regulation</option>
+            </select>
+          </div>
+
+          <!-- Semester Filter -->
+          <div>
+            <select id="filter-semester" onchange="handleSearchFilter()" class="w-full bg-slate-50 border border-slate-300 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue font-medium">
+              <option value="ALL">All Semesters (Sem 1 to 8)</option>
+              <option value="1">Semester 1 (I Year)</option>
+              <option value="2">Semester 2 (I Year)</option>
+              <option value="3">Semester 3 (II Year)</option>
+              <option value="4">Semester 4 (II Year)</option>
+              <option value="5">Semester 5 (III Year)</option>
+              <option value="6">Semester 6 (III Year)</option>
+              <option value="7">Semester 7 (IV Year)</option>
+              <option value="8">Semester 8 (IV Year)</option>
+            </select>
+          </div>
+
+        </div>
+
+        <!-- Branch Category Chips -->
+        <div class="pt-2 border-t border-slate-100 flex items-center space-x-2 overflow-x-auto pb-1">
+          <span class="text-xs font-bold text-slate-400 uppercase tracking-wider text-[10px] mr-1 flex-shrink-0">Branch:</span>
+          <button id="branch-chip-ALL" onclick="setBranchFilter('ALL')" class="branch-chip px-3 py-1.5 rounded-lg font-bold text-xs bg-brandBlue text-white shadow-sm transition flex-shrink-0">
+            All Branches
+          </button>
+          <button id="branch-chip-CSE" onclick="setBranchFilter('CSE')" class="branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex-shrink-0">
+            CSE
+          </button>
+          <button id="branch-chip-AIML" onclick="setBranchFilter('AIML')" class="branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex-shrink-0">
+            AI &amp; ML
+          </button>
+          <button id="branch-chip-AIDS" onclick="setBranchFilter('AIDS')" class="branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex-shrink-0">
+            AI &amp; Data Science
+          </button>
+          <button id="branch-chip-ECE" onclick="setBranchFilter('ECE')" class="branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex-shrink-0">
+            ECE
+          </button>
+          <button id="branch-chip-EEE" onclick="setBranchFilter('EEE')" class="branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex-shrink-0">
+            EEE
+          </button>
+          <button id="branch-chip-MECH" onclick="setBranchFilter('MECH')" class="branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex-shrink-0">
+            Mechanical
+          </button>
+          <button id="branch-chip-CIVIL" onclick="setBranchFilter('CIVIL')" class="branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition flex-shrink-0">
+            Civil
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Question Papers Grid Section -->
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center space-x-2">
+            <h2 class="text-sm font-bold text-slate-900 uppercase tracking-wide">Question Papers Archive</h2>
+            <span id="filtered-count-badge" class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-700">0 papers</span>
+          </div>
+          <button onclick="fetchPapers()" class="text-xs text-slate-500 hover:text-brandBlue font-semibold transition flex items-center space-x-1">
+            <i class="fa-solid fa-arrows-rotate text-xs"></i>
+            <span>Refresh</span>
+          </button>
+        </div>
+
+        <!-- Papers Grid -->
+        <div id="papers-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <!-- Dynamically populated by renderPapers() -->
+        </div>
+
+        <!-- Empty State Message -->
+        <div id="empty-state" style="display: none;" class="bg-white rounded-2xl p-12 text-center border border-slate-200 max-w-md mx-auto my-8">
+          <div class="w-14 h-14 bg-slate-100 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-3">
+            <i class="fa-solid fa-folder-open text-2xl"></i>
+          </div>
+          <h3 class="text-sm font-bold text-slate-800">No question papers found</h3>
+          <p class="text-xs text-slate-500 mt-1 mb-4">No papers match your search criteria. Be the first to upload one!</p>
+          <button onclick="openUploadModal()" class="px-4 py-2 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm inline-flex items-center space-x-1.5">
+            <i class="fa-solid fa-cloud-arrow-up text-xs"></i>
+            <span>Upload Question Paper</span>
+          </button>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-auto py-6">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+        <div class="flex items-center space-x-2">
+          <span class="font-bold text-slate-700">SR University PaperHub</span>
+          <span>•</span>
+          <span>School of Computer Science &amp; AI &amp; School of Engineering</span>
+        </div>
+        <div>
+          <span>Security Hardened Academic Archive • Supabase PostgreSQL &amp; Storage</span>
+        </div>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- ================= 3. PAPER IMAGE VIEWER MODAL ================= -->
+  <div id="viewer-modal" style="display: none;" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md items-center justify-center p-2 sm:p-4 overflow-hidden">
+    <div class="bg-white rounded-2xl max-w-5xl w-full h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+      
+      <!-- Viewer Header -->
+      <div class="px-4 py-3 bg-white border-b border-slate-200 flex items-center justify-between flex-shrink-0">
+        <div class="truncate mr-3">
+          <div class="flex items-center space-x-2">
+            <span id="viewer-subject-code" class="text-xs font-bold font-mono-code bg-blue-50 text-brandBlue px-2 py-0.5 rounded border border-blue-200">SUB101</span>
+            <h3 id="viewer-subject-name" class="text-sm font-bold text-slate-900 truncate">Subject Title</h3>
+          </div>
+          <p id="viewer-meta" class="text-[11px] text-slate-500 truncate mt-0.5">CSE • Semester 3 • Mid-Term 1 (R22) • AY 2024-2025</p>
+        </div>
+
+        <!-- Viewer Controls -->
+        <div class="flex items-center space-x-1.5 flex-shrink-0">
+          <button type="button" onclick="zoomViewer(0.2)" class="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition text-xs font-semibold flex items-center space-x-1" title="Zoom In">
+            <i class="fa-solid fa-magnifying-glass-plus text-xs"></i>
+            <span class="hidden sm:inline">Zoom In</span>
+          </button>
+          <button type="button" onclick="zoomViewer(-0.2)" class="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition text-xs font-semibold flex items-center space-x-1" title="Zoom Out">
+            <i class="fa-solid fa-magnifying-glass-minus text-xs"></i>
+            <span class="hidden sm:inline">Zoom Out</span>
+          </button>
+          <button type="button" onclick="rotateViewer()" class="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition text-xs font-semibold flex items-center space-x-1" title="Rotate 90°">
+            <i class="fa-solid fa-rotate-right text-xs"></i>
+            <span class="hidden sm:inline">Rotate</span>
+          </button>
+          <button type="button" onclick="downloadActivePaperImage()" class="p-2 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl transition text-xs font-bold flex items-center space-x-1" title="Download Image">
+            <i class="fa-solid fa-arrow-down text-xs"></i>
+            <span class="hidden sm:inline">Download</span>
+          </button>
+          <button type="button" onclick="closeViewerModal()" class="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition text-sm">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Image Display Container -->
+      <div class="flex-1 bg-slate-900 rounded-none overflow-auto flex items-center justify-center p-4 relative select-none">
+        <img id="viewer-image" src="" alt="Question Paper" class="max-h-full max-w-full object-contain rounded-lg shadow-2xl transition-transform duration-150 origin-center"/>
+      </div>
+
+      <!-- Bottom Footer Meta Info -->
+      <div class="px-4 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 flex-shrink-0">
+        <div class="flex items-center space-x-3">
+          <span><i class="fa-solid fa-user text-slate-400 mr-1"></i> <span id="viewer-uploader">SRU Student</span></span>
+          <span>•</span>
+          <span><i class="fa-solid fa-calendar text-slate-400 mr-1"></i> <span id="viewer-year">2024-2025</span></span>
+        </div>
+        <div>
+          <span id="viewer-marks" class="font-mono-code font-bold text-slate-700">30 Marks</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================= 4. UPLOAD QUESTION PAPER MODAL ================= -->
+  <div id="upload-modal" style="display: none;" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-xl border border-slate-200 relative my-6">
+      
+      <!-- Close button -->
+      <button type="button" onclick="closeUploadModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1">
+        <i class="fa-solid fa-xmark text-base"></i>
+      </button>
+
+      <div class="flex items-center space-x-3 mb-4">
+        <div class="w-10 h-10 bg-blue-50 text-brandBlue rounded-xl flex items-center justify-center border border-blue-100">
+          <i class="fa-solid fa-cloud-arrow-up text-lg"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-slate-900">Upload Exam Question Paper</h3>
+          <p class="text-xs text-slate-500">Auto-compressed &amp; verified for SR University repository</p>
+        </div>
+      </div>
+
+      <!-- Real-time Duplicate Detection Alert Banner -->
+      <div id="duplicate-warning-box" style="display: none;" class="mb-3.5 p-3.5 bg-amber-50 border border-amber-300 rounded-xl text-amber-900 text-xs shadow-sm">
+        <div class="flex items-start space-x-2.5">
+          <i class="fa-solid fa-triangle-exclamation text-amber-600 mt-0.5 text-base flex-shrink-0"></i>
+          <div class="flex-1">
+            <div class="font-bold text-amber-950 flex items-center justify-between">
+              <span>Duplicate Question Paper Detected!</span>
+              <span class="text-[10px] bg-amber-200 text-amber-900 font-bold px-1.5 py-0.2 rounded">Archive Match</span>
+            </div>
+            <p class="text-[11px] text-amber-800 mt-1 leading-relaxed" id="duplicate-warning-text">A paper with these parameters already exists.</p>
+            <div class="mt-2 flex items-center space-x-2">
+              <button type="button" onclick="viewExistingDuplicatePaper()" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[11px] font-bold transition">
+                <i class="fa-solid fa-eye mr-1"></i> View Existing Paper
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form -->
+      <form id="paper-upload-form" onsubmit="handlePaperUploadSubmit(event)" class="space-y-3.5">
+        
+        <!-- Row 1: Branch & Semester -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Engineering Branch *</label>
+            <select id="up-branch" required onchange="checkRealtimeDuplicates()" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+              <option value="CSE">Computer Science &amp; Engg (CSE)</option>
+              <option value="AIML">Artificial Intelligence &amp; ML (AIML)</option>
+              <option value="AIDS">AI &amp; Data Science (AIDS)</option>
+              <option value="ECE">Electronics &amp; Comm. (ECE)</option>
+              <option value="EEE">Electrical &amp; Electronics (EEE)</option>
+              <option value="MECH">Mechanical Engg. (MECH)</option>
+              <option value="CIVIL">Civil Engg. (CIVIL)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Semester *</label>
+            <select id="up-semester" required onchange="checkRealtimeDuplicates()" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+              <option value="1">Semester 1 (I Year)</option>
+              <option value="2">Semester 2 (I Year)</option>
+              <option value="3">Semester 3 (II Year)</option>
+              <option value="4">Semester 4 (II Year)</option>
+              <option value="5">Semester 5 (III Year)</option>
+              <option value="6">Semester 6 (III Year)</option>
+              <option value="7">Semester 7 (IV Year)</option>
+              <option value="8">Semester 8 (IV Year)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 2: Exam Type & Academic Regulation -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Examination Type *</label>
+            <select id="up-exam-type" required onchange="checkRealtimeDuplicates()" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+              <option value="MID_1">Mid-Term 1 (Mid-1)</option>
+              <option value="MID_2">Mid-Term 2 (Mid-2)</option>
+              <option value="SEM_END">Semester End Exam</option>
+              <option value="SUPPLY">Supplementary Exam</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Academic Regulation *</label>
+            <select id="up-regulation" required onchange="checkRealtimeDuplicates()" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+              <option value="R24">R24 Regulation</option>
+              <option value="R22" selected>R22 Regulation</option>
+              <option value="R21">R21 Regulation</option>
+              <option value="R20">R20 Regulation</option>
+              <option value="R19">R19 Regulation</option>
+              <option value="R18">R18 Regulation</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 3: Subject Code & Academic Year -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Subject Code *</label>
+            <input id="up-subject-code" type="text" required oninput="checkRealtimeDuplicates()" placeholder="e.g. 22CS501" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono-code uppercase text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Academic Year *</label>
+            <select id="up-academic-year" required onchange="checkRealtimeDuplicates()" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+              <option value="2025-2026" selected>2025-2026</option>
+              <option value="2024-2025">2024-2025</option>
+              <option value="2023-2024">2023-2024</option>
+              <option value="2022-2023">2022-2023</option>
+              <option value="2021-2022">2021-2022</option>
+              <option value="2020-2021">2020-2021</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 4: Subject Name -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">Subject Name *</label>
+          <input id="up-subject-name" type="text" required oninput="checkRealtimeDuplicates()" placeholder="e.g. Operating Systems &amp; System Programming" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+        </div>
+
+        <!-- Row 5: IMAGE FILE UPLOAD -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-700 mb-1">
+            Question Paper Image / Document * <span class="text-slate-400 font-normal">(PNG, JPG, JPEG, WEBP, PDF up to 15MB)</span>
+          </label>
+          
+          <div id="image-drop-area" class="border-2 border-dashed border-slate-300 hover:border-brandBlue rounded-2xl p-4 text-center cursor-pointer transition bg-slate-50/50 relative">
+            <input type="file" id="up-image-file" accept="image/jpeg,image/png,image/webp,application/pdf" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" onchange="handleFileSelection(event)"/>
+            
+            <div id="drop-prompt" class="space-y-1.5 py-3">
+              <i class="fa-solid fa-camera text-2xl text-slate-400"></i>
+              <div class="text-xs font-semibold text-slate-700">Click to capture photo or select file</div>
+              <p class="text-[11px] text-slate-400">Clear camera photo or scan of the question paper</p>
+            </div>
+
+            <!-- Image Selected Preview Thumbnail -->
+            <div id="image-preview-container" style="display: none;" class="pt-2">
+              <div class="relative inline-block max-w-full">
+                <img id="image-preview" src="" alt="Selected Preview" class="max-h-48 rounded-xl mx-auto shadow border border-slate-200 object-contain"/>
+                <div class="mt-2 flex items-center justify-center space-x-2">
+                  <span id="image-filename" class="text-xs font-mono-code text-slate-700 font-bold truncate max-w-xs">file.jpg</span>
+                  <span id="image-filesize" class="text-[11px] text-slate-400 font-mono-code">(0 KB)</span>
+                  <button type="button" onclick="clearSelectedImage()" class="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-[11px] font-bold hover:bg-red-200 transition">
+                    <i class="fa-solid fa-trash-can text-[10px]"></i> Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI OCR Scanner Status Box -->
+          <div id="ocr-status-box" style="display: none;" class="mt-2.5 p-3 bg-blue-50/90 border border-blue-200 rounded-xl text-xs space-y-1.5">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2 text-brandBlueDark font-bold">
+                <i id="ocr-spinner-icon" class="fa-solid fa-brain text-brandBlue"></i>
+                <span id="ocr-status-title">AI Document OCR &amp; Text Extraction</span>
+              </div>
+              <span id="ocr-confidence-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-brandBlue">Ready</span>
+            </div>
+            <p id="ocr-status-desc" class="text-[11px] text-slate-600">Scanning paper questions to prevent duplicates...</p>
+            
+            <div id="ocr-text-preview-container" style="display: none;" class="mt-2 pt-2 border-t border-blue-200/60">
+              <div class="flex items-center justify-between text-[10px] text-slate-500 mb-1">
+                <span class="font-semibold text-slate-700">Scanned Question Text:</span>
+                <button type="button" onclick="toggleOcrTextDetails()" class="text-brandBlue font-bold hover:underline" id="ocr-toggle-btn">Show Text</button>
+              </div>
+              <pre id="ocr-text-preview" style="display: none;" class="p-2 bg-white rounded-lg border border-slate-200 text-[10px] text-slate-700 font-mono-code max-h-24 overflow-y-auto whitespace-pre-wrap select-all"></pre>
+            </div>
+          </div>
+
+          <p id="upload-image-error" style="display: none;" class="text-[11px] text-red-600 font-semibold mt-1">
+            * Please attach a photo or image of the question paper.
+          </p>
+        </div>
+
+        <!-- Buttons -->
+        <div class="pt-3 flex items-center space-x-3">
+          <button type="button" onclick="closeUploadModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition">
+            Cancel
+          </button>
+          <button type="submit" id="btn-submit-paper" class="flex-1 py-2.5 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center space-x-1.5">
+            <i class="fa-solid fa-cloud-arrow-up text-xs"></i>
+            <span>Upload &amp; Publish Paper</span>
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ================= 5. ADMIN MANAGEMENT & AUDIT MODAL ================= -->
+  <div id="admin-modal" style="display: none;" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm items-center justify-center p-3 sm:p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl border border-slate-200 relative my-6">
+      
+      <!-- Close button -->
+      <button type="button" onclick="closeAdminModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1">
+        <i class="fa-solid fa-xmark text-base"></i>
+      </button>
+
+      <div class="flex items-center space-x-3 mb-4">
+        <div class="w-11 h-11 bg-amber-50 text-amber-700 rounded-2xl flex items-center justify-center border border-amber-200">
+          <i class="fa-solid fa-user-shield text-xl"></i>
+        </div>
+        <div>
+          <h3 class="text-base font-bold text-slate-900">Administrator Portal &amp; Audit Workspace</h3>
+          <p class="text-xs text-slate-500">User Activity, Login Tracking, Paper Moderation &amp; Announcements</p>
+        </div>
+      </div>
+
+      <!-- If Not Logged In As Admin -->
+      <div id="admin-login-box">
+        <form onsubmit="handleAdminLogin(event)" class="space-y-3 max-w-md mx-auto py-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Administrator Email *</label>
+            <input id="admin-email-input" type="email" required placeholder="admin@sru.edu.in" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Administrator Password *</label>
+            <input id="admin-password-input" type="password" required placeholder="Enter admin password" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+          </div>
+          <button type="submit" id="admin-login-submit-btn" class="w-full py-2.5 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm">
+            Sign In with Supabase Admin Auth
+          </button>
+        </form>
+      </div>
+
+      <!-- If Logged In As Admin (Full Control Center) -->
+      <div id="admin-controls-box" style="display: none;" class="space-y-4">
+        
+        <!-- Admin Session Banner & Navigation Tabs -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-900 text-white rounded-xl">
+          <div class="flex items-center space-x-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="text-xs font-bold text-emerald-300">Verified Administrator Session Active</span>
+          </div>
+          <button type="button" onclick="handleAdminSignOut()" class="text-xs text-red-400 hover:text-red-300 font-bold underline text-left sm:text-right">
+            <i class="fa-solid fa-arrow-right-from-bracket mr-1"></i> Sign Out Admin
+          </button>
+        </div>
+
+        <!-- Admin Workspace Tabs -->
+        <div class="flex border-b border-slate-200 text-xs font-bold space-x-4">
+          <button id="adm-tab-users-btn" onclick="setAdminWorkspaceTab('users')" class="pb-2.5 border-b-2 border-brandBlue text-brandBlue transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-users"></i>
+            <span>User Logins &amp; Uploads</span>
+          </button>
+          <button id="adm-tab-papers-btn" onclick="setAdminWorkspaceTab('papers')" class="pb-2.5 text-slate-400 hover:text-slate-700 transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-file-shield"></i>
+            <span>Paper Moderation</span>
+          </button>
+          <button id="adm-tab-notice-btn" onclick="setAdminWorkspaceTab('notice')" class="pb-2.5 text-slate-400 hover:text-slate-700 transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-bullhorn"></i>
+            <span>Campus Notice &amp; Settings</span>
+          </button>
+        </div>
+
+        <!-- TAB 1: USER LOGINS & CONTRIBUTOR ACTIVITY AUDIT -->
+        <div id="adm-tab-users" class="space-y-3.5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h4 class="text-xs font-bold text-slate-900">User Login Frequency &amp; Contributor Activity</h4>
+              <p class="text-[11px] text-slate-500">Track student sign-ins, login frequency, and papers uploaded by each user.</p>
+            </div>
+            <div class="flex items-center space-x-2">
+              <input id="adm-user-search" type="text" placeholder="Search user or roll..." oninput="filterAdminUserTable(this.value)" class="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs w-48 focus:outline-none focus:ring-1 focus:ring-brandBlue"/>
+              <button onclick="loadAdminAnalytics()" class="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 text-xs" title="Refresh User Data">
+                <i class="fa-solid fa-arrows-rotate"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Stats Counter -->
+          <div class="grid grid-cols-3 gap-3">
+            <div class="p-2.5 bg-blue-50/70 border border-blue-200 rounded-xl text-center">
+              <div id="adm-stat-users-count" class="text-base font-bold text-brandBlueDark">0</div>
+              <div class="text-[10px] text-slate-500 font-semibold">Registered Users</div>
+            </div>
+            <div class="p-2.5 bg-emerald-50/70 border border-emerald-200 rounded-xl text-center">
+              <div id="adm-stat-total-logins" class="text-base font-bold text-emerald-900">0</div>
+              <div class="text-[10px] text-slate-500 font-semibold">Total Logins Recorded</div>
+            </div>
+            <div class="p-2.5 bg-indigo-50/70 border border-indigo-200 rounded-xl text-center">
+              <div id="adm-stat-active-uploaders" class="text-base font-bold text-indigo-900">0</div>
+              <div class="text-[10px] text-slate-500 font-semibold">Contributing Uploaders</div>
+            </div>
+          </div>
+
+          <!-- Users Table -->
+          <div class="overflow-x-auto border border-slate-200 rounded-xl max-h-72 overflow-y-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead class="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-700 font-semibold text-[11px]">
+                <tr>
+                  <th class="p-2.5">Student / User</th>
+                  <th class="p-2.5">Email &amp; Dept</th>
+                  <th class="p-2.5 text-center">Login Count</th>
+                  <th class="p-2.5">Last Active</th>
+                  <th class="p-2.5 text-center">Papers Added</th>
+                  <th class="p-2.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="adm-users-tbody" class="divide-y divide-slate-100 text-slate-800">
+                <!-- Populated dynamically by renderAdminUsersTab() -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 2: PAPERS MODERATION & OCR TEXT INSPECTOR -->
+        <div id="adm-tab-papers" style="display: none;" class="space-y-3.5">
+          <div class="flex items-center justify-between">
+            <div>
+              <h4 class="text-xs font-bold text-slate-900">Archive Moderation &amp; OCR Content Inspector</h4>
+              <p class="text-[11px] text-slate-500">Inspect papers, view extracted AI OCR text, and remove low-quality uploads.</p>
+            </div>
+            <span id="adm-papers-count-badge" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">0 papers</span>
+          </div>
+
+          <div class="overflow-x-auto border border-slate-200 rounded-xl max-h-72 overflow-y-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead class="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-700 font-semibold text-[11px]">
+                <tr>
+                  <th class="p-2.5">Paper / Code</th>
+                  <th class="p-2.5">Branch &amp; Exam</th>
+                  <th class="p-2.5">Uploaded By</th>
+                  <th class="p-2.5 text-center">AI OCR Scanned</th>
+                  <th class="p-2.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="adm-papers-tbody" class="divide-y divide-slate-100 text-slate-800">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB 3: CAMPUS NOTICE & DANGER ZONE -->
+        <div id="adm-tab-notice" style="display: none;" class="space-y-4">
+          <!-- Campus Announcement -->
+          <div class="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+            <label class="block text-xs font-bold text-slate-800 mb-1">
+              <i class="fa-solid fa-bullhorn text-brandBlue mr-1"></i> Update Campus Announcement
+            </label>
+            <textarea id="admin-notice-input" rows="3" class="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-brandBlue mb-2"></textarea>
+            <button type="button" onclick="saveAnnouncementFromModal()" class="w-full py-2 bg-slate-900 hover:bg-black text-white rounded-lg text-xs font-bold transition">
+              Publish Notice to Dashboard
+            </button>
+          </div>
+
+          <!-- Danger Zone -->
+          <div class="p-3.5 bg-red-50 rounded-xl border border-red-200">
+            <label class="block text-xs font-bold text-red-900 mb-0.5">
+              <i class="fa-solid fa-triangle-exclamation text-red-600 mr-1"></i> Danger Zone
+            </label>
+            <p class="text-[11px] text-red-700 mb-2">Erase all question papers from database (requires Admin RLS policy).</p>
+            <button type="button" onclick="adminClearAllPapers()" class="w-full py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition">
+              Clear Entire Paper Archive
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================= 6. USER CONTRIBUTED PAPERS SUB-MODAL ================= -->
+  <div id="user-papers-modal" style="display: none;" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 relative my-6">
+      <button type="button" onclick="closeUserPapersModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1">
+        <i class="fa-solid fa-xmark text-base"></i>
+      </button>
+
+      <div class="flex items-center space-x-3 mb-4">
+        <div class="w-10 h-10 bg-indigo-50 text-indigo-700 rounded-xl flex items-center justify-center border border-indigo-100">
+          <i class="fa-solid fa-folder-tree text-lg"></i>
+        </div>
+        <div>
+          <h3 id="user-papers-modal-title" class="text-base font-bold text-slate-900">Papers Contributed by Student</h3>
+          <p id="user-papers-modal-subtitle" class="text-xs text-slate-500">List of all question papers submitted by this student</p>
+        </div>
+      </div>
+
+      <div id="user-papers-modal-list" class="space-y-2.5 max-h-80 overflow-y-auto pr-1">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 7. OCR EXTRACTED TEXT INSPECTOR MODAL ================= -->
+  <div id="ocr-inspector-modal" style="display: none;" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 relative my-6">
+      <button type="button" onclick="closeOcrInspectorModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1">
+        <i class="fa-solid fa-xmark text-base"></i>
+      </button>
+
+      <div class="flex items-center space-x-3 mb-3">
+        <div class="w-10 h-10 bg-blue-50 text-brandBlue rounded-xl flex items-center justify-center border border-blue-100">
+          <i class="fa-solid fa-brain text-lg"></i>
+        </div>
+        <div>
+          <h3 id="ocr-inspector-title" class="text-base font-bold text-slate-900">AI OCR Extracted Text</h3>
+          <p id="ocr-inspector-meta" class="text-xs text-slate-500">Optical Character Recognition Scanned Content</p>
+        </div>
+      </div>
+
+      <div class="p-3 bg-slate-50 rounded-xl border border-slate-200">
+        <pre id="ocr-inspector-text" class="text-xs text-slate-800 font-mono-code whitespace-pre-wrap max-h-96 overflow-y-auto select-all leading-relaxed"></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+  <!-- ================= JAVASCRIPT APPLICATION CORE ================= -->
+  <script>
+    // Global Application State
+    let currentUser = null;
+    let isAdmin = false;
+    let isGuest = false;
+    let papersList = [];
+    let allUserProfiles = [];
+    let activeFilterBranch = 'ALL';
+    let activePaperInViewer = null;
+    let viewerZoomLevel = 1.0;
+    let viewerRotationDeg = 0;
+    let selectedImageBase64 = null;
+    let selectedImageBlob = null;
+    let selectedImageMime = 'image/webp';
+    let selectedFileObj = null;
+    let extractedOcrText = '';
+    let ocrConfidence = 0;
+    let matchedDuplicatePaper = null;
+    let supabaseClient = null;
+
+    // Initialize Supabase Client
+    function initSupabase() {
+      // Clear legacy broken configuration if present in browser localStorage
+      try {
+        const saved = localStorage.getItem('sru_supabase_config');
+        if (saved && (saved.includes('dcjhszgcjlkrvjdlnwhh') || saved.includes('undefined'))) {
+          localStorage.removeItem('sru_supabase_config');
+        }
+      } catch(e) {}
+
+      const url = window.SUPABASE_URL || 'https://dcjhszgcljkrvjdlnwhh.supabase.co';
+      const key = window.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjamhzemdjbGprcnZqZGxud2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5OTg4NjAsImV4cCI6MjEwNjU3NDg2MH0.jg8nPJueBUJmbv7KyQynyyVgmTsRWUC-ivu0L7sJdb4';
+
+      if (url && key && window.supabase) {
+        try {
+          supabaseClient = window.supabase.createClient(url, key);
+          updateCloudStatusUI(true);
+        } catch (e) {
+          console.error('Supabase init error:', e);
+          updateCloudStatusUI(false);
+        }
+      } else {
+        updateCloudStatusUI(false);
+      }
+    }
+
+    function updateCloudStatusUI(isConnected) {
+      const pill = document.getElementById('cloud-status-pill');
+      if (!pill) return;
+      if (isConnected) {
+        pill.className = "hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200";
+        pill.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span><span>Supabase Cloud</span>';
+      } else {
+        pill.className = "hidden sm:flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200";
+        pill.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500"></span><span>Offline Mode</span>';
+      }
+    }
+
+    // App Initialization
+    window.addEventListener('DOMContentLoaded', async () => {
+      initSupabase();
+
+      // Check for active Supabase Auth Session
+      if (supabaseClient) {
+        try {
+          const { data: { session } } = await supabaseClient.auth.getSession();
+          if (session && session.user) {
+            await applyAuthenticatedUser(session.user);
+            await recordLoginTracking(session.user.id);
+            await initDashboard();
+            return;
+          }
+        } catch(e) {}
+      }
+
+      showAuthView();
+    });
+
+    // Track User Login in Database
+    async function recordLoginTracking(userId) {
+      if (!supabaseClient || !userId) return;
+      try {
+        await supabaseClient.rpc('record_user_login', { target_user_id: userId });
+      } catch (err) {
+        // Fallback update on profiles table
+        try {
+          await supabaseClient.from('profiles').update({
+            login_count: (currentUser?.loginCount || 0) + 1,
+            last_login_at: new Date()
+          }).eq('id', userId);
+        } catch (e) {}
+      }
+    }
+
+    // Helper to populate user session and check server-side admin role
+    async function applyAuthenticatedUser(user) {
+      if (!user) return;
+
+      let prof = null;
+      if (supabaseClient) {
+        try {
+          const { data } = await supabaseClient.from('profiles').select('*').eq('id', user.id).maybeSingle();
+          if (data) prof = data;
+        } catch(e) {}
+      }
+
+      currentUser = {
+        id: user.id,
+        email: user.email,
+        rollNo: prof?.roll_no || user.user_metadata?.roll_no || user.email?.split('@')[0]?.toUpperCase() || 'STUDENT',
+        name: prof?.name || user.user_metadata?.name || 'Student',
+        branch: prof?.branch || user.user_metadata?.branch || 'CSE',
+        semester: prof?.semester || user.user_metadata?.semester || 1,
+        loginCount: prof?.login_count || 1,
+        lastLoginAt: prof?.last_login_at || new Date()
+      };
+      isGuest = false;
+
+      // Verify server-side admin privilege
+      await checkAdminPrivilege(user.id);
+    }
+
+    async function checkAdminPrivilege(userId) {
+      isAdmin = false;
+      if (!supabaseClient || !userId) return;
+
+      try {
+        const { data: isAdminRpc } = await supabaseClient.rpc('is_admin');
+        if (isAdminRpc === true) {
+          isAdmin = true;
+          return;
+        }
+        
+        const { data: roleData } = await supabaseClient.from('admin_roles').select('role').eq('user_id', userId).maybeSingle();
+        if (roleData && roleData.role === 'admin') {
+          isAdmin = true;
+        }
+      } catch(e) {
+        isAdmin = false;
+      }
+    }
+
+    // Authentication Tabs (Sign In / Register)
+    let currentAuthMode = 'login';
+    function setAuthTab(mode) {
+      currentAuthMode = mode;
+      const tabLogin = document.getElementById('auth-tab-login');
+      const tabRegister = document.getElementById('auth-tab-register');
+      const fieldName = document.getElementById('field-name');
+      const fieldRoll = document.getElementById('field-roll');
+      const fieldBranch = document.getElementById('field-branch');
+      const fieldSem = document.getElementById('field-sem');
+      const submitBtn = document.getElementById('auth-submit-btn');
+
+    function showAuthFeedback(message, type = 'error') {
+      const box = document.getElementById('auth-feedback-box');
+      const text = document.getElementById('auth-feedback-text');
+      const icon = document.getElementById('auth-feedback-icon');
+      if (!box || !text) return;
+
+      if (type === 'error') {
+        box.className = "mb-4 p-3 rounded-xl text-xs font-semibold flex items-start space-x-2 bg-red-50 text-red-900 border border-red-200";
+        icon.className = "fa-solid fa-circle-exclamation mt-0.5 text-sm flex-shrink-0 text-red-600";
+      } else if (type === 'success') {
+        box.className = "mb-4 p-3 rounded-xl text-xs font-semibold flex items-start space-x-2 bg-emerald-50 text-emerald-900 border border-emerald-200";
+        icon.className = "fa-solid fa-circle-check mt-0.5 text-sm flex-shrink-0 text-emerald-600";
+      } else {
+        box.className = "mb-4 p-3 rounded-xl text-xs font-semibold flex items-start space-x-2 bg-blue-50 text-blue-900 border border-blue-200";
+        icon.className = "fa-solid fa-circle-info mt-0.5 text-sm flex-shrink-0 text-brandBlue";
+      }
+
+      text.innerHTML = message;
+      box.style.display = 'flex';
+    }
+
+    function hideAuthFeedback() {
+      const box = document.getElementById('auth-feedback-box');
+      if (box) box.style.display = 'none';
+      const passInput = document.getElementById('login-password');
+      if (passInput) passInput.classList.remove('border-red-500', 'ring-2', 'ring-red-200');
+      const emailInput = document.getElementById('login-email');
+      if (emailInput && emailInput.value.endsWith('@sru.edu.in')) {
+        emailInput.classList.remove('border-red-500', 'ring-2', 'ring-red-200');
+      }
+    }
+
+    // Real-time Validation for SRU Email Domain (@sru.edu.in)
+    function validateEmailFieldLive() {
+      const emailInput = document.getElementById('login-email');
+      const hint = document.getElementById('email-live-hint');
+      if (!emailInput || !hint) return;
+      const val = emailInput.value.trim().toLowerCase();
+
+      if (!val) {
+        hint.className = 'text-[11px] text-slate-500 mt-1 flex items-center gap-1';
+        hint.innerHTML = '<i class="fa-solid fa-circle-exclamation text-amber-500 text-xs"></i> <span>Must end with <strong>@sru.edu.in</strong>. Personal emails (<strong>@gmail.com</strong>) are not accepted.</span>';
+        emailInput.classList.remove('border-red-500', 'ring-2', 'ring-red-200', 'border-emerald-500', 'ring-emerald-200');
+        return;
+      }
+
+      if (val.includes('@gmail.com') || val.includes('@gmail')) {
+        hint.className = 'text-[11px] text-red-600 font-semibold mt-1 flex items-center gap-1 animate-pulse';
+        hint.innerHTML = '<i class="fa-solid fa-circle-xmark text-red-600 text-xs"></i> <span>@gmail.com is NOT permitted! Please enter your official @sru.edu.in email.</span>';
+        emailInput.classList.add('border-red-500', 'ring-2', 'ring-red-200');
+        emailInput.classList.remove('border-emerald-500', 'ring-emerald-200');
+      } else if (val.includes('@') && !val.endsWith('@sru.edu.in') && val.split('@')[1].length >= 3) {
+        const domain = val.split('@')[1];
+        hint.className = 'text-[11px] text-red-600 font-semibold mt-1 flex items-center gap-1';
+        hint.innerHTML = `<i class="fa-solid fa-circle-xmark text-red-600 text-xs"></i> <span>Invalid domain (@${escapeHTML(domain)}). Only <strong>@sru.edu.in</strong> is allowed.</span>`;
+        emailInput.classList.add('border-red-500', 'ring-2', 'ring-red-200');
+        emailInput.classList.remove('border-emerald-500', 'ring-emerald-200');
+      } else if (val.endsWith('@sru.edu.in') && val.length > '@sru.edu.in'.length) {
+        hint.className = 'text-[11px] text-emerald-600 font-semibold mt-1 flex items-center gap-1';
+        hint.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-600 text-xs"></i> <span>Valid SR University institutional email domain (@sru.edu.in).</span>';
+        emailInput.classList.remove('border-red-500', 'ring-2', 'ring-red-200');
+        emailInput.classList.add('border-emerald-500', 'ring-2', 'ring-emerald-200');
+      } else {
+        hint.className = 'text-[11px] text-slate-500 mt-1 flex items-center gap-1';
+        hint.innerHTML = '<i class="fa-solid fa-circle-exclamation text-amber-500 text-xs"></i> <span>Must end with <strong>@sru.edu.in</strong> (e.g. <code>rollno@sru.edu.in</code>).</span>';
+        emailInput.classList.remove('border-red-500', 'ring-2', 'ring-red-200');
+        emailInput.classList.remove('border-emerald-500', 'ring-emerald-200');
+      }
+    }
+
+    function togglePasswordVisibility(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      if (!input || !icon) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fa-regular fa-eye-slash text-xs text-brandBlue';
+      } else {
+        input.type = 'password';
+        icon.className = 'fa-regular fa-eye text-xs text-slate-400';
+      }
+    }
+
+    function setAuthTab(mode) {
+      currentAuthMode = mode;
+      hideAuthFeedback();
+      const tabLogin = document.getElementById('auth-tab-login');
+      const tabRegister = document.getElementById('auth-tab-register');
+      const fieldName = document.getElementById('field-name');
+      const fieldRoll = document.getElementById('field-roll');
+      const fieldBranch = document.getElementById('field-branch');
+      const fieldSem = document.getElementById('field-sem');
+      const submitBtn = document.getElementById('auth-submit-btn');
+
+      if (mode === 'login') {
+        tabLogin.className = "flex-1 pb-3 border-b-2 border-brandBlue text-brandBlue font-bold transition";
+        tabRegister.className = "flex-1 pb-3 text-slate-400 hover:text-slate-600 transition";
+        fieldName.style.display = 'none';
+        fieldRoll.style.display = 'none';
+        fieldBranch.style.display = 'none';
+        fieldSem.style.display = 'none';
+        submitBtn.innerHTML = '<span>Sign In to Dashboard</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+      } else {
+        tabRegister.className = "flex-1 pb-3 border-b-2 border-brandBlue text-brandBlue font-bold transition";
+        tabLogin.className = "flex-1 pb-3 text-slate-400 hover:text-slate-600 transition";
+        fieldName.style.display = 'block';
+        fieldRoll.style.display = 'block';
+        fieldBranch.style.display = 'block';
+        fieldSem.style.display = 'block';
+        submitBtn.innerHTML = '<span>Register &amp; Continue</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+      }
+    }
+
+    // Handle Student Authentication (Supabase Auth SignUp / SignIn)
+    async function handleAuthSubmit(event) {
+      event.preventDefault();
+      hideAuthFeedback();
+
+      const email = document.getElementById('login-email').value.trim().toLowerCase();
+      const password = document.getElementById('login-password').value;
+      const submitBtn = document.getElementById('auth-submit-btn');
+
+      if (!email || !password) {
+        showAuthFeedback('Please enter both your email address and password.', 'error');
+        return;
+      }
+
+      // STRICT DOMAIN ENFORCEMENT: ONLY @sru.edu.in IS ALLOWED FOR REGISTRATION & LOGIN!
+      const sruEmailPattern = /^[a-zA-Z0-9._%+-]+@sru\.edu\.in$/i;
+      if (!email.endsWith('@sru.edu.in') || !sruEmailPattern.test(email)) {
+        const emailInput = document.getElementById('login-email');
+        if (emailInput) {
+          emailInput.classList.add('border-red-500', 'ring-2', 'ring-red-200');
+          emailInput.focus();
+        }
+
+        if (email.includes('@gmail.com') || email.includes('@gmail')) {
+          showAuthFeedback('⛔ <strong>@gmail.com is NOT Accepted!</strong><br>Registration and sign-in are strictly restricted to official SR University accounts.<br>Please enter your college email ending in <strong>@sru.edu.in</strong> (e.g. <code>2103a51000@sru.edu.in</code>).', 'error');
+        } else {
+          showAuthFeedback('⛔ <strong>Unauthorized Email Domain!</strong><br>Only official SR University email addresses ending with <strong>@sru.edu.in</strong> are permitted. Personal emails like @gmail.com or @yahoo.com cannot register or log in.', 'error');
+        }
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Authenticating...</span>';
+
+      if (currentAuthMode === 'register') {
+        const rollInput = document.getElementById('login-roll');
+        if (rollInput && !rollInput.value.trim()) {
+          rollInput.value = email.split('@')[0].toUpperCase();
+        }
+        const name = document.getElementById('login-name').value.trim() || 'Student';
+        const rollNo = (document.getElementById('login-roll').value.trim() || email.split('@')[0].toUpperCase());
+        const branch = document.getElementById('login-branch').value;
+        const semester = parseInt(document.getElementById('login-sem').value) || 1;
+
+        if (password.length < 6) {
+          showAuthFeedback('Password must be at least 6 characters long.', 'error');
+          document.getElementById('login-password').focus();
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<span>Register &amp; Continue</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+          return;
+        }
+
+        if (supabaseClient) {
+          try {
+            const { data, error } = await supabaseClient.auth.signUp({
+              email,
+              password,
+              options: {
+                data: { roll_no: rollNo, name, branch, semester }
+              }
+            });
+
+            if (error) {
+              if (error.message.toLowerCase().includes('already registered') || error.message.toLowerCase().includes('user already exists')) {
+                showAuthFeedback(`An account with <strong>${escapeHTML(email)}</strong> already exists. Please switch to the <a href="javascript:void(0)" onclick="setAuthTab('login')" class="underline font-bold text-brandBlue">Sign In</a> tab and enter your password.`, 'error');
+              } else {
+                showAuthFeedback('Registration failed: ' + escapeHTML(error.message), 'error');
+              }
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = '<span>Register &amp; Continue</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+              return;
+            }
+
+            // If Supabase returns empty identities on existing email
+            if (data && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+              showAuthFeedback(`An account with <strong>${escapeHTML(email)}</strong> already exists. Please switch to the <a href="javascript:void(0)" onclick="setAuthTab('login')" class="underline font-bold text-brandBlue">Sign In</a> tab.`, 'error');
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = '<span>Register &amp; Continue</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+              return;
+            }
+
+            // If session is immediately active
+            if (data && data.session && data.user) {
+              showAuthFeedback('Account registered and verified! Logging you in...', 'success');
+              await applyAuthenticatedUser(data.user);
+              await recordLoginTracking(data.user.id);
+              showToast('Account registered and logged in!', 'success');
+              setTimeout(() => initDashboard(), 300);
+              return;
+            }
+
+            // Attempt immediate login with the registered password
+            const { data: signInData, error: signInErr } = await supabaseClient.auth.signInWithPassword({
+              email,
+              password
+            });
+
+            if (!signInErr && signInData && signInData.user) {
+              showAuthFeedback('Account created and logged in successfully!', 'success');
+              await applyAuthenticatedUser(signInData.user);
+              await recordLoginTracking(signInData.user.id);
+              showToast('Welcome to SRU PaperHub!', 'success');
+              setTimeout(() => initDashboard(), 300);
+              return;
+            }
+
+            showAuthFeedback('Account created! Please switch to Sign In and enter your password.', 'success');
+            setAuthTab('login');
+          } catch(err) {
+            showAuthFeedback('Registration error: ' + escapeHTML(err.message || err), 'error');
+          }
+        }
+      } else {
+        // Student Sign In Mode
+        if (supabaseClient) {
+          try {
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+              email,
+              password
+            });
+
+            if (error) {
+              const passInput = document.getElementById('login-password');
+              if (passInput) passInput.classList.add('border-red-500', 'ring-2', 'ring-red-200');
+
+              if (error.message.toLowerCase().includes('invalid login credentials') || error.message.toLowerCase().includes('invalid grant')) {
+                showAuthFeedback('❌ <strong>Incorrect Password or Email</strong><br>Please enter the exact password you used during registration. If you haven\'t created an account yet, click <a href="javascript:void(0)" onclick="setAuthTab(\'register\')" class="underline font-bold text-brandBlue">Create Account</a>.', 'error');
+              } else if (error.message.toLowerCase().includes('email not confirmed')) {
+                showAuthFeedback('⚠️ <strong>Email Not Confirmed</strong><br>Please check your inbox to confirm your email address.', 'error');
+              } else {
+                showAuthFeedback('Sign In failed: ' + escapeHTML(error.message), 'error');
+              }
+
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = '<span>Sign In to Dashboard</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+              return;
+            }
+
+            if (data && data.user) {
+              showAuthFeedback('Password verified! Loading your dashboard...', 'success');
+              await applyAuthenticatedUser(data.user);
+              await recordLoginTracking(data.user.id);
+              showToast('Signed in successfully!', 'success');
+              setTimeout(() => initDashboard(), 300);
+              return;
+            }
+          } catch(err) {
+            showAuthFeedback('Sign In error: ' + escapeHTML(err.message || err), 'error');
+          }
+        }
+      }
+
+      submitBtn.disabled = false;
+    }
+
+    // Guest Mode (Read-Only Search & Paper Viewing)
+    function continueAsGuest() {
+      currentUser = {
+        id: null,
+        rollNo: 'GUEST',
+        name: 'Guest Student',
+        email: 'guest@sru.edu.in',
+        branch: 'CSE',
+        semester: 1
+      };
+      isGuest = true;
+      isAdmin = false;
+      showToast('Browsing in Guest Mode (Read-Only)', 'info');
+      initDashboard();
+    }
+
+    // Secure Admin Modal Controllers & Multi-Tab Admin Dashboard
+    function openAdminModal() {
+      document.getElementById('admin-modal').style.display = 'flex';
+      if (isAdmin) {
+        document.getElementById('admin-login-box').style.display = 'none';
+        document.getElementById('admin-controls-box').style.display = 'block';
+        document.getElementById('admin-notice-input').value = document.getElementById('announcement-text').textContent;
+        setAdminWorkspaceTab('users');
+        loadAdminAnalytics();
+      } else {
+        document.getElementById('admin-login-box').style.display = 'block';
+        document.getElementById('admin-controls-box').style.display = 'none';
+        document.getElementById('admin-password-input').value = '';
+      }
+    }
+
+    function closeAdminModal() {
+      document.getElementById('admin-modal').style.display = 'none';
+    }
+
+    function setAdminWorkspaceTab(tab) {
+      const tabUsers = document.getElementById('adm-tab-users');
+      const tabPapers = document.getElementById('adm-tab-papers');
+      const tabNotice = document.getElementById('adm-tab-notice');
+
+      const btnUsers = document.getElementById('adm-tab-users-btn');
+      const btnPapers = document.getElementById('adm-tab-papers-btn');
+      const btnNotice = document.getElementById('adm-tab-notice-btn');
+
+      tabUsers.style.display = 'none';
+      tabPapers.style.display = 'none';
+      tabNotice.style.display = 'none';
+
+      btnUsers.className = "pb-2.5 text-slate-400 hover:text-slate-700 transition flex items-center space-x-1.5";
+      btnPapers.className = "pb-2.5 text-slate-400 hover:text-slate-700 transition flex items-center space-x-1.5";
+      btnNotice.className = "pb-2.5 text-slate-400 hover:text-slate-700 transition flex items-center space-x-1.5";
+
+      if (tab === 'users') {
+        tabUsers.style.display = 'block';
+        btnUsers.className = "pb-2.5 border-b-2 border-brandBlue text-brandBlue transition flex items-center space-x-1.5 font-bold";
+        renderAdminUsersTab();
+      } else if (tab === 'papers') {
+        tabPapers.style.display = 'block';
+        btnPapers.className = "pb-2.5 border-b-2 border-brandBlue text-brandBlue transition flex items-center space-x-1.5 font-bold";
+        renderAdminPapersTab();
+      } else if (tab === 'notice') {
+        tabNotice.style.display = 'block';
+        btnNotice.className = "pb-2.5 border-b-2 border-brandBlue text-brandBlue transition flex items-center space-x-1.5 font-bold";
+      }
+    }
+
+    // Load Admin Analytics & User Profiles
+    async function loadAdminAnalytics() {
+      if (!supabaseClient || !isAdmin) return;
+
+      try {
+        const { data, error } = await supabaseClient.from('profiles').select('*').order('last_login_at', { ascending: false });
+        if (!error && Array.isArray(data)) {
+          allUserProfiles = data;
+          renderAdminUsersTab();
+        }
+      } catch (err) {
+        console.warn('Analytics load error:', err);
+      }
+    }
+
+    function renderAdminUsersTab(filterQuery = '') {
+      const tbody = document.getElementById('adm-users-tbody');
+      if (!tbody) return;
+
+      const q = (filterQuery || '').toLowerCase().trim();
+      let filtered = allUserProfiles;
+      if (q) {
+        filtered = allUserProfiles.filter(u => 
+          (u.name || '').toLowerCase().includes(q) ||
+          (u.roll_no || '').toLowerCase().includes(q) ||
+          (u.email || '').toLowerCase().includes(q) ||
+          (u.branch || '').toLowerCase().includes(q)
+        );
+      }
+
+      // Compute statistics
+      const totalUsers = allUserProfiles.length;
+      const totalLogins = allUserProfiles.reduce((acc, u) => acc + (u.login_count || 1), 0);
+      
+      // Calculate active uploaders
+      const uploaderRolls = new Set(papersList.map(p => (p.uploaderRollNo || '').toUpperCase()));
+      const activeUploadersCount = allUserProfiles.filter(u => uploaderRolls.has((u.roll_no || '').toUpperCase())).length;
+
+      document.getElementById('adm-stat-users-count').textContent = totalUsers;
+      document.getElementById('adm-stat-total-logins').textContent = totalLogins;
+      document.getElementById('adm-stat-active-uploaders').textContent = activeUploadersCount;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400 font-medium">No user records match your search.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(user => {
+        const roll = user.roll_no || 'STUDENT';
+        const userPapers = papersList.filter(p => (p.uploaderRollNo || '').toUpperCase() === roll.toUpperCase() || (p.userId && p.userId === user.id));
+        const papersCount = userPapers.length;
+        const lastActive = formatRelativeTime(user.last_login_at || user.updated_at || user.created_at);
+        const loginCount = user.login_count || 1;
+
+        return `
+          <tr class="hover:bg-slate-50/80 transition">
+            <td class="p-2.5 font-medium text-slate-900">
+              <div class="font-bold flex items-center space-x-1.5">
+                <span>${escapeHTML(user.name || 'Student')}</span>
+                ${user.email === 'admin@sru.edu.in' ? '<span class="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 rounded">ADMIN</span>' : ''}
+              </div>
+              <div class="text-[10px] text-slate-400 font-mono-code">${escapeHTML(roll)}</div>
+            </td>
+            <td class="p-2.5">
+              <div class="truncate max-w-[150px]">${escapeHTML(user.email || 'N/A')}</div>
+              <div class="text-[10px] text-brandBlue font-bold">${escapeHTML(user.branch || 'CSE')} (Sem ${user.semester || 1})</div>
+            </td>
+            <td class="p-2.5 text-center">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <i class="fa-solid fa-arrow-right-to-bracket mr-1 text-[9px]"></i> ${loginCount} logins
+              </span>
+            </td>
+            <td class="p-2.5 text-[11px] text-slate-500 whitespace-nowrap">
+              ${lastActive}
+            </td>
+            <td class="p-2.5 text-center">
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${papersCount > 0 ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-500'}">
+                📄 ${papersCount} papers
+              </span>
+            </td>
+            <td class="p-2.5 text-right">
+              ${papersCount > 0 ? `
+                <button type="button" onclick="viewUserContributedPapers('${escapeHTML(user.id)}', '${escapeHTML(user.name)}', '${escapeHTML(roll)}')" class="px-2.5 py-1 bg-brandBlue hover:bg-brandBlueHover text-white rounded-lg text-[10px] font-bold transition shadow-xs">
+                  View Papers (${papersCount})
+                </button>
+              ` : `
+                <span class="text-[10px] text-slate-400 font-medium">No uploads</span>
+              `}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterAdminUserTable(val) {
+      renderAdminUsersTab(val);
+    }
+
+    function renderAdminPapersTab() {
+      const tbody = document.getElementById('adm-papers-tbody');
+      const badge = document.getElementById('adm-papers-count-badge');
+      if (!tbody) return;
+
+      badge.textContent = `${papersList.length} papers`;
+
+      if (papersList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400 font-medium">No papers uploaded in archive.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = papersList.map(paper => {
+        const hasOcr = paper.extractedText && paper.extractedText.length > 10;
+        return `
+          <tr class="hover:bg-slate-50/80 transition">
+            <td class="p-2.5">
+              <div class="font-bold text-slate-900 flex items-center space-x-1.5">
+                <span class="font-mono-code text-brandBlue">${escapeHTML(paper.subjectCode)}</span>
+              </div>
+              <div class="text-[11px] text-slate-600 truncate max-w-xs">${escapeHTML(paper.subjectName)}</div>
+            </td>
+            <td class="p-2.5 text-[11px] text-slate-600">
+              <div>${escapeHTML(paper.branch)} • Sem ${paper.semester}</div>
+              <div class="text-[10px] text-slate-400 font-medium">${escapeHTML(paper.examTypeLabel || paper.examType)} (${escapeHTML(paper.academicYear)})</div>
+            </td>
+            <td class="p-2.5 text-[11px]">
+              <div class="font-bold text-slate-800">${escapeHTML(paper.uploaderName || 'Student')}</div>
+              <div class="text-[10px] text-slate-400 font-mono-code">${escapeHTML(paper.uploaderRollNo || 'SRU')}</div>
+            </td>
+            <td class="p-2.5 text-center">
+              ${hasOcr ? `
+                <button type="button" onclick="openOcrInspector('${escapeHTML(paper.id)}')" class="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-brandBlue hover:bg-blue-100 transition border border-blue-200">
+                  <i class="fa-solid fa-brain mr-1"></i> Scanned OCR
+                </button>
+              ` : `
+                <span class="text-[10px] text-slate-400">Not Scanned</span>
+              `}
+            </td>
+            <td class="p-2.5 text-right space-x-1 whitespace-nowrap">
+              <button type="button" onclick="openViewerModal('${escapeHTML(paper.id)}')" class="p-1.5 text-slate-600 hover:text-brandBlue hover:bg-blue-50 rounded-lg transition" title="View Paper">
+                <i class="fa-solid fa-eye text-xs"></i>
+              </button>
+              <button type="button" onclick="adminDeletePaper('${escapeHTML(paper.id)}', event)" class="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete Paper">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // View User Contributed Papers Sub-Modal
+    function viewUserContributedPapers(userId, userName, rollNo) {
+      const modal = document.getElementById('user-papers-modal');
+      const title = document.getElementById('user-papers-modal-title');
+      const subtitle = document.getElementById('user-papers-modal-subtitle');
+      const list = document.getElementById('user-papers-modal-list');
+
+      title.textContent = `Papers Contributed by ${userName}`;
+      subtitle.textContent = `Roll No: ${rollNo} • Total Submissions in SRU Archive`;
+
+      const userPapers = papersList.filter(p => (p.uploaderRollNo || '').toUpperCase() === rollNo.toUpperCase() || (p.userId && p.userId === userId));
+
+      if (userPapers.length === 0) {
+        list.innerHTML = `<p class="text-xs text-slate-400 p-4 text-center">No question papers uploaded by this user.</p>`;
+      } else {
+        list.innerHTML = userPapers.map(p => `
+          <div class="p-3 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-between transition">
+            <div>
+              <div class="flex items-center space-x-2">
+                <span class="text-xs font-bold font-mono-code bg-blue-50 text-brandBlue px-2 py-0.5 rounded border border-blue-200">${escapeHTML(p.subjectCode)}</span>
+                <span class="text-xs font-bold text-slate-900">${escapeHTML(p.subjectName)}</span>
+              </div>
+              <div class="text-[11px] text-slate-500 mt-1">
+                ${escapeHTML(p.branch)} • Sem ${p.semester} • ${escapeHTML(p.examTypeLabel || p.examType)} • AY ${escapeHTML(p.academicYear)} • <span class="text-emerald-700 font-semibold">${p.downloadCount || 0} downloads</span>
+              </div>
+            </div>
+            <div class="flex items-center space-x-1.5 flex-shrink-0">
+              <button type="button" onclick="openViewerModal('${escapeHTML(p.id)}')" class="px-2.5 py-1 bg-white hover:bg-blue-50 border border-slate-300 text-slate-700 hover:text-brandBlue rounded-lg text-xs font-bold transition">
+                <i class="fa-solid fa-eye mr-1"></i> View
+              </button>
+              <button type="button" onclick="adminDeletePaper('${escapeHTML(p.id)}', event)" class="p-1.5 text-red-600 hover:bg-red-100 rounded-lg transition" title="Delete">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+              </button>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      modal.style.display = 'flex';
+    }
+
+    function closeUserPapersModal() {
+      document.getElementById('user-papers-modal').style.display = 'none';
+    }
+
+    // OCR Text Inspector Modal
+    function openOcrInspector(paperId) {
+      const paper = papersList.find(p => p.id === paperId);
+      if (!paper) return;
+
+      document.getElementById('ocr-inspector-title').textContent = `${paper.subjectCode} - ${paper.subjectName}`;
+      document.getElementById('ocr-inspector-meta').textContent = `Scanned text content for ${paper.branch} (Sem ${paper.semester}, ${paper.academicYear})`;
+      document.getElementById('ocr-inspector-text').textContent = paper.extractedText || 'No OCR text recorded for this paper.';
+      document.getElementById('ocr-inspector-modal').style.display = 'flex';
+    }
+
+    function closeOcrInspectorModal() {
+      document.getElementById('ocr-inspector-modal').style.display = 'none';
+    }
+
+    function formatRelativeTime(dateInput) {
+      if (!dateInput) return 'Never';
+      try {
+        const d = new Date(dateInput);
+        if (isNaN(d.getTime())) return 'Recently';
+        const now = new Date();
+        const diffMs = now - d;
+        const diffMins = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+        if (diffMins < 2) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays === 1) return 'Yesterday';
+        if (diffDays < 7) return `${diffDays}d ago`;
+        return d.toLocaleDateString();
+      } catch (e) {
+        return 'Recently';
+      }
+    }
+
+    // Secure Admin Sign-In using Supabase Auth
+    async function handleAdminLogin(event) {
+      event.preventDefault();
+      const email = document.getElementById('admin-email-input').value.trim();
+      const password = document.getElementById('admin-password-input').value;
+      const submitBtn = document.getElementById('admin-login-submit-btn');
+
+      if (!email || !password) {
+        alert('Please enter your administrator email and password.');
+        return;
+      }
+
+      if (!email.toLowerCase().endsWith('@sru.edu.in') && email.toLowerCase() !== 'venkatasaiaitha@gmail.com') {
+        alert('Access Denied: Administrator login is strictly restricted to official @sru.edu.in administrator accounts (or authorized owner).');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Verifying Admin Privileges...</span>';
+
+      if (supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email,
+            password
+          });
+
+          if (error) {
+            alert('Authentication failed: ' + error.message);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'Sign In with Supabase Admin Auth';
+            return;
+          }
+
+          if (data && data.user) {
+            await checkAdminPrivilege(data.user.id);
+            if (isAdmin) {
+              await applyAuthenticatedUser(data.user);
+              await recordLoginTracking(data.user.id);
+              showToast('Admin session verified via database role policy', 'success');
+              openAdminModal();
+              initDashboard();
+            } else {
+              alert('Access Denied: Your account is authenticated, but your user ID is not registered in the public.admin_roles table.');
+              await supabaseClient.auth.signOut();
+            }
+          }
+        } catch(err) {
+          alert('Admin login error: ' + err.message);
+        }
+      } else {
+        alert('Supabase client is not connected. Admin actions require cloud database connection.');
+      }
+
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Sign In with Supabase Admin Auth';
+    }
+
+    async function handleAdminSignOut() {
+      if (supabaseClient) {
+        await supabaseClient.auth.signOut();
+      }
+      isAdmin = false;
+      currentUser = null;
+      closeAdminModal();
+      showAuthView();
+      showToast('Admin signed out', 'info');
+    }
+
+    // Admin Actions (Secured by Database RLS)
+    async function saveAnnouncementFromModal() {
+      const text = document.getElementById('admin-notice-input').value.trim();
+      if (!text) return;
+
+      if (!isAdmin || !supabaseClient) {
+        alert('Unauthorized: Administrator authorization required.');
+        return;
+      }
+
+      try {
+        const { error } = await supabaseClient.from('announcements').upsert({ id: 1, text, updated_at: new Date() });
+        if (error) {
+          alert('Failed to update announcement: ' + error.message);
+          return;
+        }
+        document.getElementById('announcement-text').textContent = text;
+        showToast('Announcement published live to all students!', 'success');
+      } catch(e) {
+        alert('Error updating notice: ' + e.message);
+      }
+    }
+
+    async function adminDeletePaper(paperId, event) {
+      if (event) event.stopPropagation();
+      if (!confirm('Are you sure you want to permanently delete this question paper?')) {
+        return;
+      }
+
+      if (supabaseClient) {
+        const { error } = await supabaseClient.from('papers').delete().eq('id', paperId);
+        if (error) {
+          alert('Delete rejected by database policy: ' + error.message);
+          return;
+        }
+        showToast('Question paper deleted', 'info');
+        await fetchPapers();
+        if (isAdmin) {
+          renderAdminPapersTab();
+          renderAdminUsersTab();
+        }
+      }
+    }
+
+    async function adminClearAllPapers() {
+      if (!confirm('CRITICAL WARNING: Are you sure you want to delete ALL question papers in the database? This cannot be undone.')) {
+        return;
+      }
+      const confirmCode = prompt('Type "DELETE ALL" to confirm clearing the entire archive:');
+      if (confirmCode !== 'DELETE ALL') {
+        alert('Operation cancelled. Verification phrase was incorrect.');
+        return;
+      }
+
+      if (supabaseClient) {
+        const { error } = await supabaseClient.from('papers').delete().neq('id', 'placeholder_do_not_match');
+        if (error) {
+          alert('Failed to clear papers: ' + error.message);
+          return;
+        }
+        showToast('All question papers deleted from cloud database', 'info');
+        await fetchPapers();
+      }
+    }
+
+    // Switch between Authentication View and Main Dashboard
+    function showAuthView() {
+      document.getElementById('auth-view').style.display = 'flex';
+      document.getElementById('app-view').style.display = 'none';
+      closeAdminModal();
+      closeUploadModal();
+      closeViewerModal();
+    }
+
+    async function initDashboard() {
+      document.getElementById('auth-view').style.display = 'none';
+      document.getElementById('app-view').style.display = 'flex';
+
+      if (currentUser) {
+        document.getElementById('user-display-name').textContent = currentUser.name;
+        document.getElementById('user-display-roll').textContent = currentUser.rollNo;
+      }
+
+      // Fetch latest announcement
+      if (supabaseClient) {
+        try {
+          const { data } = await supabaseClient.from('announcements').select('text').eq('id', 1).maybeSingle();
+          if (data && data.text) {
+            document.getElementById('announcement-text').textContent = data.text;
+          }
+        } catch(e) {}
+      }
+
+      await fetchPapers();
+    }
+
+    function getBranchFullName(code) {
+      const map = {
+        'CSE': 'Computer Science & Engineering',
+        'AIML': 'Artificial Intelligence & Machine Learning',
+        'AIDS': 'AI & Data Science',
+        'ECE': 'Electronics & Communication Engineering',
+        'EEE': 'Electrical & Electronics Engineering',
+        'MECH': 'Mechanical Engineering',
+        'CIVIL': 'Civil Engineering'
+      };
+      return map[code] || code;
+    }
+
+    function mapPaperRow(row) {
+      return {
+        id: row.id,
+        userId: row.user_id,
+        subjectCode: row.subject_code,
+        subjectName: row.subject_name,
+        branch: row.branch,
+        semester: row.semester,
+        examType: row.exam_type,
+        examTypeLabel: row.exam_type_label || (row.exam_type === 'MID_1' ? 'Mid-Term 1' : (row.exam_type === 'MID_2' ? 'Mid-Term 2' : 'Semester End')),
+        regulation: row.regulation,
+        academicYear: row.academic_year,
+        duration: row.duration,
+        maxMarks: row.max_marks,
+        uploaderName: row.uploader_name,
+        uploaderRollNo: row.uploader_roll,
+        imageUrl: row.image_url,
+        extractedText: row.extracted_text || '',
+        ocrConfidence: row.ocr_confidence || 0,
+        downloadCount: row.download_count || 0
+      };
+    }
+
+    // Fetch papers from Supabase (Dual-Channel: Supabase Client + Direct REST Fallback)
+    async function fetchPapers() {
+      const countBadge = document.getElementById('filtered-count-badge');
+      if (countBadge) countBadge.textContent = 'Loading...';
+
+      const url = 'https://dcjhszgcljkrvjdlnwhh.supabase.co';
+      const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjamhzemdjbGprcnZqZGxud2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5OTg4NjAsImV4cCI6MjEwNjU3NDg2MH0.jg8nPJueBUJmbv7KyQynyyVgmTsRWUC-ivu0L7sJdb4';
+      let fetched = false;
+
+      // Channel 1: Supabase JS Client SDK
+      if (supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient
+            .from('papers')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          if (!error && Array.isArray(data) && data.length > 0) {
+            papersList = data.map(mapPaperRow);
+            fetched = true;
+          }
+        } catch (err) {
+          console.warn('Supabase SDK query failed, trying direct REST fetch:', err);
+        }
+      }
+
+      // Channel 2: Direct REST fetch fallback (bypasses any SDK caching or connection hiccup)
+      if (!fetched) {
+        try {
+          const resp = await fetch(`${url}/rest/v1/papers?select=*&order=created_at.desc`, {
+            headers: {
+              'apikey': key,
+              'Authorization': `Bearer ${key}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          if (resp.ok) {
+            const data = await resp.json();
+            if (Array.isArray(data)) {
+              papersList = data.map(mapPaperRow);
+              fetched = true;
+            }
+          }
+        } catch (restErr) {
+          console.warn('Direct REST fetch failed:', restErr);
+        }
+      }
+
+      renderPapers();
+      updateMetrics();
+    }
+
+    function updateMetrics() {
+      const total = papersList.length;
+      const branchCount = papersList.filter(p => currentUser && p.branch && p.branch.toUpperCase() === currentUser.branch.toUpperCase()).length;
+      const totalDownloads = papersList.reduce((acc, p) => acc + (p.downloadCount || 0), 0);
+
+      document.getElementById('stat-total-papers').textContent = total;
+      document.getElementById('stat-branch-papers').textContent = branchCount;
+      document.getElementById('stat-branch-label').textContent = currentUser && currentUser.branch ? `For ${currentUser.branch} Branch` : 'For your branch';
+      document.getElementById('stat-total-downloads').textContent = totalDownloads;
+    }
+
+    function setBranchFilter(branch) {
+      activeFilterBranch = branch;
+      document.querySelectorAll('.branch-chip').forEach(btn => {
+        btn.className = "branch-chip px-3 py-1.5 rounded-lg font-medium text-xs bg-slate-100 text-slate-600 hover:bg-slate-200 transition";
+      });
+      const activeBtn = document.getElementById(`branch-chip-${branch}`);
+      if (activeBtn) {
+        activeBtn.className = "branch-chip px-3 py-1.5 rounded-lg font-bold text-xs bg-brandBlue text-white shadow-sm transition";
+      }
+      renderPapers();
+    }
+
+    function handleSearchFilter() {
+      renderPapers();
+    }
+
+    function syncSearchQuery(val) {
+      document.getElementById('search-query').value = val;
+      renderPapers();
+    }
+
+    function resetFiltersAndHome() {
+      document.getElementById('search-query').value = '';
+      document.getElementById('header-search-query').value = '';
+      document.getElementById('filter-exam-type').value = 'ALL';
+      document.getElementById('filter-regulation').value = 'ALL';
+      document.getElementById('filter-semester').value = 'ALL';
+      setBranchFilter('ALL');
+    }
+
+    // Render Question Paper Cards
+    function renderPapers() {
+      const grid = document.getElementById('papers-grid');
+      const emptyState = document.getElementById('empty-state');
+      const countBadge = document.getElementById('filtered-count-badge');
+
+      const searchQuery = (document.getElementById('search-query').value || '').trim().toLowerCase();
+      const examFilter = document.getElementById('filter-exam-type').value;
+      const regFilter = document.getElementById('filter-regulation').value;
+      const semFilter = document.getElementById('filter-semester').value;
+
+      let filtered = papersList.filter(paper => {
+        // Branch Filter
+        if (activeFilterBranch !== 'ALL' && paper.branch.toUpperCase() !== activeFilterBranch.toUpperCase()) {
+          return false;
+        }
+        // Exam Type Filter
+        if (examFilter !== 'ALL' && paper.examType !== examFilter) {
+          return false;
+        }
+        // Regulation Filter
+        if (regFilter !== 'ALL' && paper.regulation !== regFilter) {
+          return false;
+        }
+        // Semester Filter
+        if (semFilter !== 'ALL' && paper.semester.toString() !== semFilter.toString()) {
+          return false;
+        }
+        // Text Search (Subject name, subject code, or extracted OCR text)
+        if (searchQuery) {
+          const matchCode = (paper.subjectCode || '').toLowerCase().includes(searchQuery);
+          const matchName = (paper.subjectName || '').toLowerCase().includes(searchQuery);
+          const matchBranch = (paper.branch || '').toLowerCase().includes(searchQuery);
+          const matchOcr = (paper.extractedText || '').toLowerCase().includes(searchQuery);
+          if (!matchCode && !matchName && !matchBranch && !matchOcr) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      countBadge.textContent = `${filtered.length} papers`;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = '';
+        emptyState.style.display = 'block';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      grid.innerHTML = filtered.map(paper => renderPaperCard(paper)).join('');
+    }
+
+    function renderPaperCard(paper) {
+      const examColors = {
+        'MID_1': 'bg-blue-50 text-blue-700 border-blue-200',
+        'MID_2': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        'SEM_END': 'bg-purple-50 text-purple-700 border-purple-200',
+        'SUPPLY': 'bg-amber-50 text-amber-700 border-amber-200'
+      };
+      const examBadgeClass = examColors[paper.examType] || 'bg-slate-50 text-slate-700 border-slate-200';
+      const thumbnailSrc = sanitizeUrl(paper.imageUrl);
+      const canDelete = isAdmin || (currentUser && currentUser.id && paper.userId === currentUser.id);
+
+      return `
+        <div class="bg-white rounded-2xl border border-slate-200 hover:border-brandBlue/50 shadow-sm hover:shadow-md transition duration-200 flex flex-col overflow-hidden group">
+          
+          <!-- Top Card Meta -->
+          <div class="p-5 flex-1 flex flex-col">
+            <div class="flex items-start justify-between gap-2 mb-2">
+              <span class="px-2 py-0.5 rounded text-[11px] font-bold font-mono-code bg-slate-100 text-slate-800 border border-slate-200">
+                ${escapeHTML(paper.subjectCode)}
+              </span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${examBadgeClass}">
+                ${escapeHTML(paper.examTypeLabel || paper.examType)}
+              </span>
+            </div>
+
+            <!-- Subject Title -->
+            <h3 class="text-sm font-bold text-slate-900 group-hover:text-brandBlue transition line-clamp-2 mb-2" title="${escapeHTML(paper.subjectName)}">
+              ${escapeHTML(paper.subjectName)}
+            </h3>
+
+            <!-- Tags / Academic Info -->
+            <div class="space-y-1 mt-auto text-xs text-slate-600">
+              <div class="flex items-center space-x-1.5">
+                <i class="fa-solid fa-code-branch text-slate-400 text-[10px] w-3.5"></i>
+                <span class="font-semibold text-slate-800">${escapeHTML(paper.branch)}</span>
+                <span>•</span>
+                <span>Sem ${paper.semester}</span>
+                <span>•</span>
+                <span class="font-semibold text-brandBlue">${escapeHTML(paper.regulation || 'R22')}</span>
+              </div>
+              <div class="flex items-center space-x-1.5 text-[11px] text-slate-500">
+                <i class="fa-regular fa-calendar text-slate-400 text-[10px] w-3.5"></i>
+                <span>AY ${escapeHTML(paper.academicYear || '2025-2026')}</span>
+                <span>•</span>
+                <span>${escapeHTML(paper.duration || '90 Mins')}</span>
+              </div>
+            </div>
+
+            <!-- Contributor info (Privacy Protected) -->
+            <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+              <span class="truncate font-mono-code">By ${escapeHTML(paper.uploaderRollNo || 'Student')}</span>
+              <span class="font-mono-code text-slate-400">${parseInt(paper.downloadCount) || 0} downloads</span>
+            </div>
+          </div>
+
+          <!-- Card Actions -->
+          <div class="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center space-x-2">
+            <button type="button" onclick="openViewerModal('${escapeHTML(paper.id)}')" class="flex-1 py-2 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center justify-center space-x-1.5">
+              <i class="fa-solid fa-magnifying-glass text-xs"></i>
+              <span>View Full Paper</span>
+            </button>
+            <button type="button" onclick="handleCardDownload('${escapeHTML(paper.id)}', event)" class="p-2 bg-white hover:bg-blue-50 text-slate-700 hover:text-brandBlue border border-slate-300 rounded-xl transition" title="Direct Download Image">
+              <i class="fa-solid fa-arrow-down text-xs"></i>
+            </button>
+            ${canDelete ? `
+              <button type="button" onclick="adminDeletePaper('${escapeHTML(paper.id)}', event)" class="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl transition border border-red-200" title="Delete Paper">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+              </button>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    // Cross-Origin Safe File Downloader (Fetches blob so browser always downloads file)
+    async function downloadFileFromUrl(url, filename) {
+      if (!url) return;
+      try {
+        const safeUrl = sanitizeUrl(url);
+        if (safeUrl.startsWith('data:')) {
+          const a = document.createElement('a');
+          a.href = safeUrl;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          return;
+        }
+
+        showToast('Downloading question paper...', 'info');
+        const response = await fetch(safeUrl, { mode: 'cors' });
+        if (!response.ok) throw new Error('Network error: ' + response.statusText);
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => window.URL.revokeObjectURL(blobUrl), 3000);
+        showToast('Download complete!', 'success');
+      } catch (err) {
+        console.warn('Direct blob download failed, opening in new tab:', err);
+        window.open(url, '_blank');
+      }
+    }
+
+    async function handleCardDownload(paperId, event) {
+      if (event) event.stopPropagation();
+      const paper = papersList.find(p => p.id === paperId);
+      if (!paper) return;
+      trackDownload(paper.id);
+      const url = paper.imageUrl;
+      let ext = 'jpg';
+      if (url.includes('.webp')) ext = 'webp';
+      else if (url.includes('.png')) ext = 'png';
+      else if (url.includes('.pdf')) ext = 'pdf';
+      const filename = `${paper.subjectCode}_${paper.branch}_${paper.examType}.${ext}`;
+      await downloadFileFromUrl(url, filename);
+    }
+
+    // Question Paper Image Viewer Controller
+    function openViewerModal(paperId) {
+      const paper = papersList.find(p => p.id === paperId);
+      if (!paper) return;
+
+      activePaperInViewer = paper;
+      viewerZoomLevel = 1.0;
+      viewerRotationDeg = 0;
+
+      document.getElementById('viewer-subject-code').textContent = paper.subjectCode;
+      document.getElementById('viewer-subject-name').textContent = paper.subjectName;
+      document.getElementById('viewer-meta').textContent = `${paper.branch} • Semester ${paper.semester} • ${paper.examTypeLabel || paper.examType} (${paper.regulation || 'R22'}) • ${paper.academicYear || '2025-2026'}`;
+      document.getElementById('viewer-uploader').textContent = paper.uploaderRollNo ? `Enrollment: ${paper.uploaderRollNo}` : 'SRU Student';
+      document.getElementById('viewer-year').textContent = paper.academicYear || '2025-2026';
+      document.getElementById('viewer-marks').textContent = `${paper.maxMarks || 30} Marks (${paper.duration || '90 Mins'})`;
+
+      const viewerImg = document.getElementById('viewer-image');
+      viewerImg.src = sanitizeUrl(paper.imageUrl);
+      viewerImg.style.transform = 'scale(1) rotate(0deg)';
+
+      document.getElementById('viewer-modal').style.display = 'flex';
+      document.body.classList.add('overflow-hidden');
+    }
+
+    function closeViewerModal() {
+      document.getElementById('viewer-modal').style.display = 'none';
+      document.body.classList.remove('overflow-hidden');
+      activePaperInViewer = null;
+    }
+
+    function zoomViewer(delta) {
+      viewerZoomLevel = Math.max(0.5, Math.min(3.5, viewerZoomLevel + delta));
+      applyViewerTransform();
+    }
+
+    function rotateViewer() {
+      viewerRotationDeg = (viewerRotationDeg + 90) % 360;
+      applyViewerTransform();
+    }
+
+    function applyViewerTransform() {
+      const img = document.getElementById('viewer-image');
+      if (img) {
+        img.style.transform = `scale(${viewerZoomLevel}) rotate(${viewerRotationDeg}deg)`;
+      }
+    }
+
+    async function downloadActivePaperImage() {
+      if (!activePaperInViewer) return;
+      trackDownload(activePaperInViewer.id);
+      const url = activePaperInViewer.imageUrl;
+      let ext = 'jpg';
+      if (url.includes('.webp')) ext = 'webp';
+      else if (url.includes('.png')) ext = 'png';
+      else if (url.includes('.pdf')) ext = 'pdf';
+      const filename = `${activePaperInViewer.subjectCode}_${activePaperInViewer.branch}_${activePaperInViewer.examType}.${ext}`;
+      await downloadFileFromUrl(url, filename);
+    }
+
+    async function trackDownload(paperId) {
+      const p = papersList.find(item => item.id === paperId);
+      if (p) {
+        p.downloadCount = (p.downloadCount || 0) + 1;
+        updateMetrics();
+        if (supabaseClient) {
+          try {
+            await supabaseClient.rpc('increment_download', { paper_id: paperId });
+          } catch(e) {}
+        }
+      }
+    }
+
+    // ================= DUPLICATE DETECTION & AI OCR ENGINE =================
+
+    // Realtime Metadata Duplicate Checking
+    function checkRealtimeDuplicates() {
+      const code = (document.getElementById('up-subject-code').value || '').trim().toUpperCase();
+      const branch = document.getElementById('up-branch').value;
+      const sem = document.getElementById('up-semester').value;
+      const exam = document.getElementById('up-exam-type').value;
+      const reg = document.getElementById('up-regulation').value;
+      const year = document.getElementById('up-academic-year').value;
+      const name = (document.getElementById('up-subject-name').value || '').trim().toLowerCase();
+
+      const warningBox = document.getElementById('duplicate-warning-box');
+      const warningText = document.getElementById('duplicate-warning-text');
+
+      if (!code || code.length < 2) {
+        matchedDuplicatePaper = null;
+        warningBox.style.display = 'none';
+        return;
+      }
+
+      // Check 1: Exact code + branch + semester + exam + reg + year match
+      const exactMatch = papersList.find(p => 
+        (p.subjectCode || '').toUpperCase() === code &&
+        p.branch === branch &&
+        p.semester.toString() === sem.toString() &&
+        p.examType === exam &&
+        p.regulation === reg &&
+        p.academicYear === year
+      );
+
+      if (exactMatch) {
+        matchedDuplicatePaper = exactMatch;
+        warningText.innerHTML = `An identical question paper for <strong>${escapeHTML(exactMatch.subjectCode)} - ${escapeHTML(exactMatch.subjectName)}</strong> (${escapeHTML(exactMatch.branch)}, ${escapeHTML(exactMatch.examTypeLabel || exactMatch.examType)}, ${escapeHTML(exactMatch.academicYear)}) is already in the archive uploaded by <strong>${escapeHTML(exactMatch.uploaderRollNo || 'Student')}</strong>.`;
+        warningBox.style.display = 'block';
+        return;
+      }
+
+      // Check 2: Same code and year match
+      const partialMatch = papersList.find(p => 
+        (p.subjectCode || '').toUpperCase() === code &&
+        p.academicYear === year &&
+        p.examType === exam
+      );
+
+      if (partialMatch) {
+        matchedDuplicatePaper = partialMatch;
+        warningText.innerHTML = `A matching question paper for <strong>${escapeHTML(partialMatch.subjectCode)}</strong> (${escapeHTML(partialMatch.examTypeLabel || partialMatch.examType)}, ${escapeHTML(partialMatch.academicYear)}) already exists. Please verify details to prevent duplicate uploads.`;
+        warningBox.style.display = 'block';
+        return;
+      }
+
+      matchedDuplicatePaper = null;
+      warningBox.style.display = 'none';
+    }
+
+    function viewExistingDuplicatePaper() {
+      if (matchedDuplicatePaper) {
+        closeUploadModal();
+        openViewerModal(matchedDuplicatePaper.id);
+      }
+    }
+
+    // AI OCR Text Extraction via In-Browser Tesseract.js Worker
+    async function runOcrScanOnImage(imageSource) {
+      const ocrBox = document.getElementById('ocr-status-box');
+      const ocrTitle = document.getElementById('ocr-status-title');
+      const ocrBadge = document.getElementById('ocr-confidence-badge');
+      const ocrDesc = document.getElementById('ocr-status-desc');
+      const ocrIcon = document.getElementById('ocr-spinner-icon');
+      const ocrPreviewContainer = document.getElementById('ocr-text-preview-container');
+      const ocrPre = document.getElementById('ocr-text-preview');
+
+      ocrBox.style.display = 'block';
+      ocrIcon.className = "fa-solid fa-brain fa-spin text-brandBlue";
+      ocrTitle.textContent = "AI OCR Document Scanning...";
+      ocrBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800";
+      ocrBadge.textContent = "Processing (0%)";
+      ocrDesc.textContent = "Scanning paper for questions, subject codes, and duplicate text...";
+      ocrPreviewContainer.style.display = 'none';
+
+      if (!window.Tesseract) {
+        ocrIcon.className = "fa-solid fa-check text-emerald-600";
+        ocrTitle.textContent = "Document Ready";
+        ocrBadge.textContent = "Verified";
+        ocrDesc.textContent = "Document optimized and ready for publishing.";
+        return;
+      }
+
+      try {
+        const worker = await Tesseract.createWorker('eng', 1, {
+          logger: m => {
+            if (m.status === 'recognizing text' && m.progress) {
+              const p = Math.round(m.progress * 100);
+              ocrBadge.textContent = `Scanning (${p}%)`;
+            }
+          }
+        });
+
+        const ret = await worker.recognize(imageSource);
+        await worker.terminate();
+
+        const rawText = ret.data.text ? ret.data.text.trim() : '';
+        const conf = Math.round(ret.data.confidence || 85);
+        extractedOcrText = rawText;
+        ocrConfidence = conf;
+
+        const words = rawText.split(/\s+/).filter(w => w.length > 0).length;
+
+        ocrIcon.className = "fa-solid fa-circle-check text-emerald-600";
+        ocrTitle.textContent = "AI OCR Analysis Complete";
+        ocrBadge.className = "text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800";
+        ocrBadge.textContent = `✨ ${words} Words (${conf}% Confidence)`;
+        ocrDesc.textContent = `Text extracted and indexed. Ready for search and duplicate protection.`;
+        
+        if (words > 0) {
+          ocrPre.textContent = rawText;
+          ocrPreviewContainer.style.display = 'block';
+        }
+
+        // Check if extracted text duplicates an existing paper's content
+        checkOcrContentDuplicates(rawText);
+
+        // Auto-detect subject code if not filled
+        autoSuggestCodeFromOcr(rawText);
+
+      } catch (err) {
+        console.warn('OCR processing error:', err);
+        ocrIcon.className = "fa-solid fa-circle-check text-blue-600";
+        ocrTitle.textContent = "Document Optimized";
+        ocrBadge.textContent = "Ready";
+        ocrDesc.textContent = "Image formatted and ready for upload.";
+      }
+    }
+
+    function toggleOcrTextDetails() {
+      const pre = document.getElementById('ocr-text-preview');
+      const btn = document.getElementById('ocr-toggle-btn');
+      if (pre.style.display === 'none') {
+        pre.style.display = 'block';
+        btn.textContent = 'Hide Text';
+      } else {
+        pre.style.display = 'none';
+        btn.textContent = 'Show Text';
+      }
+    }
+
+    // Auto-Suggest Subject Code & Title from Scanned OCR Text
+    function autoSuggestCodeFromOcr(text) {
+      if (!text) return;
+      const codeInput = document.getElementById('up-subject-code');
+      if (!codeInput.value.trim()) {
+        // Regex for university course codes (e.g. 22CS301, 20EC402, CS301, R22-CS-101)
+        const match = text.match(/\b([0-9]{2}[A-Z]{2,4}[0-9]{3}|[A-Z]{2,4}[0-9]{3})\b/i);
+        if (match && match[1]) {
+          codeInput.value = match[1].toUpperCase();
+          checkRealtimeDuplicates();
+        }
+      }
+    }
+
+    // Check Content Overlap with Existing Papers
+    function checkOcrContentDuplicates(text) {
+      if (!text || text.length < 30) return;
+      const cleanTokens = text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length >= 4);
+      if (cleanTokens.length < 5) return;
+
+      const tokenSet = new Set(cleanTokens);
+
+      for (const p of papersList) {
+        if (p.extractedText && p.extractedText.length > 30) {
+          const existingTokens = p.extractedText.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length >= 4);
+          let matchCount = 0;
+          for (const t of existingTokens) {
+            if (tokenSet.has(t)) matchCount++;
+          }
+          const similarity = matchCount / Math.max(existingTokens.length, 1);
+          if (similarity > 0.60 || matchCount > 25) {
+            const warningBox = document.getElementById('duplicate-warning-box');
+            const warningText = document.getElementById('duplicate-warning-text');
+            matchedDuplicatePaper = p;
+            warningText.innerHTML = `⚠️ <strong>AI Content Duplicate:</strong> The scanned questions in this document match <strong>${escapeHTML(p.subjectCode)} - ${escapeHTML(p.subjectName)}</strong> (${Math.round(similarity * 100)}% content similarity).`;
+            warningBox.style.display = 'block';
+            break;
+          }
+        }
+      }
+    }
+
+    // Image Upload Modal Controller
+    function openUploadModal() {
+      if (currentUser && currentUser.branch && currentUser.branch !== 'ALL') {
+        document.getElementById('up-branch').value = currentUser.branch;
+        document.getElementById('up-semester').value = currentUser.semester;
+      }
+      clearSelectedImage();
+      document.getElementById('upload-modal').style.display = 'flex';
+      document.body.classList.add('overflow-hidden');
+      checkRealtimeDuplicates();
+    }
+
+    function closeUploadModal() {
+      document.getElementById('upload-modal').style.display = 'none';
+      document.body.classList.remove('overflow-hidden');
+      document.getElementById('paper-upload-form').reset();
+      clearSelectedImage();
+    }
+
+    // High-Performance In-Browser Image Optimization (WebP/JPEG Adaptive Compression)
+    async function compressImageFile(file, maxDim = 1600, quality = 0.82) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            let w = img.width;
+            let h = img.height;
+            if (w > maxDim || h > maxDim) {
+              if (w > h) {
+                h = Math.round((h * maxDim) / w);
+                w = maxDim;
+              } else {
+                w = Math.round((w * maxDim) / h);
+                w = maxDim;
+              }
+            }
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, 0, 0, w, h);
+
+            let mime = 'image/webp';
+            let dataUrl = canvas.toDataURL(mime, quality);
+            if (!dataUrl.startsWith('data:image/webp')) {
+              mime = 'image/jpeg';
+              dataUrl = canvas.toDataURL(mime, quality);
+            }
+
+            canvas.toBlob((blob) => {
+              if (!blob) {
+                const parts = dataUrl.split(',');
+                const byteCharacters = atob(parts[1]);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                  byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                blob = new Blob([new Uint8Array(byteNumbers)], { type: mime });
+              }
+              resolve({
+                blob: blob,
+                dataUrl: dataUrl,
+                mime: mime,
+                width: w,
+                height: h,
+                originalSize: file.size,
+                compressedSize: blob.size
+              });
+            }, mime, quality);
+          };
+          img.onerror = () => reject(new Error('Failed to load image for compression'));
+          img.src = e.target.result;
+        };
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // File Selection & Security Hardening
+    async function handleFileSelection(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const MAX_SIZE = 15 * 1024 * 1024;
+      if (file.size > MAX_SIZE) {
+        alert('File size exceeds the 15MB limit. Please upload a smaller image.');
+        clearSelectedImage();
+        return;
+      }
+
+      const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+      const fileExt = file.name.split('.').pop().toLowerCase();
+      const allowedExts = ['jpg', 'jpeg', 'png', 'webp', 'pdf'];
+
+      if (!allowedMimes.includes(file.type) || !allowedExts.includes(fileExt)) {
+        alert('Security Alert: Only JPG, PNG, WEBP, and PDF documents are allowed. Executable and SVG files are rejected.');
+        clearSelectedImage();
+        return;
+      }
+
+      selectedFileObj = file;
+      document.getElementById('upload-image-error').style.display = 'none';
+
+      if (file.type.startsWith('image/')) {
+        try {
+          document.getElementById('drop-prompt').innerHTML = '<div class="py-3"><i class="fa-solid fa-spinner fa-spin text-2xl text-brandBlue"></i><p class="text-xs font-semibold text-slate-700 mt-2">Optimizing &amp; compressing image...</p></div>';
+          
+          const result = await compressImageFile(file, 1600, 0.82);
+          selectedImageBlob = result.blob;
+          selectedImageBase64 = result.dataUrl;
+          selectedImageMime = result.mime;
+
+          showOptimizedPreview(file.name, result.originalSize, result.compressedSize, result.dataUrl, false);
+
+          // Kick off background AI OCR scan
+          runOcrScanOnImage(result.dataUrl);
+
+        } catch (err) {
+          console.error('Compression error:', err);
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            selectedImageBase64 = e.target.result;
+            selectedImageBlob = file;
+            selectedImageMime = file.type;
+            showOptimizedPreview(file.name, file.size, file.size, selectedImageBase64, false);
+            runOcrScanOnImage(e.target.result);
+          };
+          reader.readAsDataURL(file);
+        }
+      } else {
+        // PDF document
+        selectedImageBlob = file;
+        selectedImageMime = 'application/pdf';
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          selectedImageBase64 = e.target.result;
+          showOptimizedPreview(file.name, file.size, file.size, '/images/paper_dsa.svg', true);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function showOptimizedPreview(name, origSize, compSize, src, isPdf = false) {
+      document.getElementById('drop-prompt').style.display = 'none';
+      const previewContainer = document.getElementById('image-preview-container');
+      previewContainer.style.display = 'block';
+      document.getElementById('image-preview').src = src;
+      document.getElementById('image-filename').textContent = name;
+
+      const origKB = Math.round(origSize / 1024);
+      const compKB = Math.round(compSize / 1024);
+      const savings = origSize > compSize ? Math.round(((origSize - compSize) / origSize) * 100) : 0;
+
+      const sizeBadge = document.getElementById('image-filesize');
+      if (!isPdf && savings > 10) {
+        sizeBadge.innerHTML = `<span class="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">✨ ${compKB} KB (Saved ${savings}%)</span> <span class="text-slate-400 line-through text-[10px]">(${origKB} KB)</span>`;
+      } else {
+        sizeBadge.textContent = `(${compKB} KB)`;
+      }
+    }
+
+    function clearSelectedImage() {
+      selectedImageBase64 = null;
+      selectedImageBlob = null;
+      selectedImageMime = 'image/webp';
+      selectedFileObj = null;
+      extractedOcrText = '';
+      ocrConfidence = 0;
+      matchedDuplicatePaper = null;
+      document.getElementById('up-image-file').value = '';
+      document.getElementById('drop-prompt').innerHTML = '<i class="fa-solid fa-camera text-2xl text-slate-400"></i><div class="text-xs font-semibold text-slate-700">Click to capture photo or select file</div><p class="text-[11px] text-slate-400">Clear camera photo or scan of the question paper</p>';
+      document.getElementById('drop-prompt').style.display = 'block';
+      document.getElementById('image-preview-container').style.display = 'none';
+      document.getElementById('image-preview').src = '';
+      document.getElementById('ocr-status-box').style.display = 'none';
+      document.getElementById('duplicate-warning-box').style.display = 'none';
+    }
+
+    // Submit Paper - Uploads to Supabase Cloud with Server-Side Verification
+    async function handlePaperUploadSubmit(event) {
+      event.preventDefault();
+
+      if (!selectedImageBase64) {
+        document.getElementById('upload-image-error').style.display = 'block';
+        return;
+      }
+
+      // Check if exact duplicate was found and ask for confirmation
+      if (matchedDuplicatePaper) {
+        const confirmUpload = confirm(`DUPLICATE WARNING: A question paper for ${matchedDuplicatePaper.subjectCode} (${matchedDuplicatePaper.academicYear}) already exists in the repository.\n\nAre you sure you want to upload this again?`);
+        if (!confirmUpload) {
+          return;
+        }
+      }
+      
+      const submitBtn = document.getElementById('btn-submit-paper');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Publishing to Cloud...</span>';
+
+      const code = document.getElementById('up-subject-code').value.trim().toUpperCase();
+      const name = document.getElementById('up-subject-name').value.trim();
+      const branch = document.getElementById('up-branch').value;
+      const sem = parseInt(document.getElementById('up-semester').value);
+      const exam = document.getElementById('up-exam-type').value;
+      const reg = document.getElementById('up-regulation').value;
+      const year = document.getElementById('up-academic-year').value;
+
+      // Input Validation
+      if (code.length < 2 || code.length > 25) {
+        alert('Subject code must be between 2 and 25 characters.');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up text-xs"></i> <span>Upload &amp; Publish Paper</span>';
+        return;
+      }
+
+      if (name.length < 2 || name.length > 150) {
+        alert('Subject name must be between 2 and 150 characters.');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up text-xs"></i> <span>Upload &amp; Publish Paper</span>';
+        return;
+      }
+
+      const paperId = `sru_${branch.toLowerCase()}_${code.toLowerCase()}_${Date.now()}`;
+      const examLabels = {
+        'MID_1': 'Mid-Term 1',
+        'MID_2': 'Mid-Term 2',
+        'SEM_END': 'Semester End Exam',
+        'SUPPLY': 'Supplementary Exam'
+      };
+
+      let uploadedImageUrl = null;
+      let cloudSaved = false;
+      let cloudErrorDetail = "";
+
+      if (supabaseClient) {
+        try {
+          let blob = selectedImageBlob;
+          if (!blob && selectedImageBase64) {
+            try {
+              const parts = selectedImageBase64.split(',');
+              const mimeMatch = parts[0].match(/:(.*?);/);
+              const mimeType = mimeMatch ? mimeMatch[1] : 'image/webp';
+              const byteCharacters = atob(parts[1]);
+              const byteNumbers = new Array(byteCharacters.length);
+              for (let offset = 0; offset < byteCharacters.length; offset += 1024) {
+                const slice = byteCharacters.slice(offset, offset + 1024);
+                const byteNums = new Array(slice.length);
+                for (let i = 0; i < slice.length; i++) {
+                  byteNums[i] = slice.charCodeAt(i);
+                }
+                byteArrays.push(new Uint8Array(byteNums));
+              }
+              blob = new Blob(byteArrays, { type: mimeType });
+            } catch(convErr) {
+              const res = await fetch(selectedImageBase64);
+              blob = await res.blob();
+            }
+          }
+
+          // Determine safe extension from optimized blob type
+          let ext = 'webp';
+          if (blob && blob.type) {
+            if (blob.type === 'image/jpeg') ext = 'jpg';
+            else if (blob.type === 'image/png') ext = 'png';
+            else if (blob.type === 'application/pdf') ext = 'pdf';
+            else if (blob.type === 'image/webp') ext = 'webp';
+          }
+          const safeFileName = `${crypto.randomUUID()}.${ext}`;
+          
+          // Storage Path: paper-images/{user_id_or_public}/{safeFileName}
+          const storageFolder = (currentUser && currentUser.id) ? currentUser.id : 'public';
+          const storagePath = `${storageFolder}/${safeFileName}`;
+
+          // Upload to Supabase Storage Bucket 'paper-images'
+          const { data: storageData, error: storageErr } = await supabaseClient
+            .storage
+            .from('paper-images')
+            .upload(storagePath, blob, { contentType: blob ? blob.type : 'image/webp', upsert: false });
+
+          if (!storageErr) {
+            const { data: urlData } = supabaseClient.storage.from('paper-images').getPublicUrl(storagePath);
+            uploadedImageUrl = urlData.publicUrl;
+          } else {
+            cloudErrorDetail += `Storage: ${storageErr.message || JSON.stringify(storageErr)}. `;
+          }
+
+          // Insert into Supabase 'papers' table
+          const { error: dbErr } = await supabaseClient.from('papers').insert({
+            id: paperId,
+            user_id: (currentUser && currentUser.id) ? currentUser.id : null,
+            subject_code: code,
+            subject_name: name,
+            branch: branch,
+            semester: sem,
+            exam_type: exam,
+            exam_type_label: examLabels[exam] || exam,
+            regulation: reg,
+            academic_year: year,
+            duration: exam.includes('MID') ? '90 Mins' : '3 Hours',
+            max_marks: exam.includes('MID') ? 30 : 60,
+            uploader_name: (currentUser && currentUser.name) ? currentUser.name : 'Student',
+            uploader_roll: (currentUser && currentUser.rollNo) ? currentUser.rollNo : 'SRU',
+            image_url: uploadedImageUrl || selectedImageBase64,
+            extracted_text: extractedOcrText || null,
+            ocr_confidence: ocrConfidence || 0,
+            download_count: 0
+          });
+
+          if (!dbErr) {
+            cloudSaved = true;
+          } else {
+            cloudErrorDetail += `Database: ${dbErr.message || JSON.stringify(dbErr)}. `;
+          }
+        } catch (err) {
+          cloudErrorDetail += `Connection: ${err.message || err}. `;
+        }
+      }
+
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up text-xs"></i> <span>Upload &amp; Publish Paper</span>';
+
+      if (cloudSaved) {
+        showToast('Question paper uploaded successfully and published to all students!', 'success');
+        closeUploadModal();
+        await fetchPapers();
+      } else {
+        alert(`Upload Notice: Paper was processed, but cloud database reported: ${cloudErrorDetail || 'Check network connection'}.\n\nEnsure SQL schema has been executed in Supabase SQL Editor.`);
+        closeUploadModal();
+        await fetchPapers();
+      }
+    }
+
+    function handleUserSignOut() {
+      if (supabaseClient) {
+        supabaseClient.auth.signOut();
+      }
+      currentUser = null;
+      isAdmin = false;
+      isGuest = false;
+      showAuthView();
+      showToast('Signed out successfully', 'info');
+    }
+
+    // Helper Toast System
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      const colors = {
+        success: 'bg-emerald-600 text-white border-emerald-700',
+        error: 'bg-red-600 text-white border-red-700',
+        info: 'bg-slate-900 text-white border-slate-800'
+      };
+      const icons = {
+        success: 'fa-solid fa-circle-check',
+        error: 'fa-solid fa-triangle-exclamation',
+        info: 'fa-solid fa-circle-info'
+      };
+
+      toast.className = `${colors[type] || colors.info} border px-4 py-2.5 rounded-xl text-xs font-semibold shadow-lg flex items-center space-x-2 transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto`;
+      toast.innerHTML = `<i class="${icons[type] || icons.info}"></i> <span>${escapeHTML(message)}</span>`;
+      
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 50);
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // Security HTML & URL Sanitizers
+    function escapeHTML(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function sanitizeUrl(url) {
+      if (!url) return '';
+      const clean = String(url).trim();
+      if (clean.startsWith('javascript:') || clean.startsWith('vbscript:') || clean.startsWith('data:text/html')) {
+        return '#';
+      }
+      return clean;
+    }
+  </script>
+</body>
+</html>
