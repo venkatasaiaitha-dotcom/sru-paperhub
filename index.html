@@ -1054,15 +1054,6 @@
 
     // Authentication Tabs (Sign In / Register)
     let currentAuthMode = 'login';
-    function setAuthTab(mode) {
-      currentAuthMode = mode;
-      const tabLogin = document.getElementById('auth-tab-login');
-      const tabRegister = document.getElementById('auth-tab-register');
-      const fieldName = document.getElementById('field-name');
-      const fieldRoll = document.getElementById('field-roll');
-      const fieldBranch = document.getElementById('field-branch');
-      const fieldSem = document.getElementById('field-sem');
-      const submitBtn = document.getElementById('auth-submit-btn');
 
     function showAuthFeedback(message, type = 'error') {
       const box = document.getElementById('auth-feedback-box');
