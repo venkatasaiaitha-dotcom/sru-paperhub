@@ -1019,9 +1019,14 @@ html_content = r'''<!DOCTYPE html>
       showAuthView();
     });
 
+    // Helper: Validate UUID format
+    function isValidUuid(str) {
+      return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(str || '');
+    }
+
     // Track User Login in Database
     async function recordLoginTracking(userId) {
-      if (!supabaseClient || !userId) return;
+      if (!supabaseClient || !userId || !isValidUuid(userId)) return;
       try {
         await supabaseClient.rpc('record_user_login', { target_user_id: userId });
       } catch (err) {
@@ -1040,7 +1045,7 @@ html_content = r'''<!DOCTYPE html>
       if (!user) return;
 
       let prof = null;
-      if (supabaseClient) {
+      if (supabaseClient && user.id && isValidUuid(user.id)) {
         try {
           const { data } = await supabaseClient.from('profiles').select('*').eq('id', user.id).maybeSingle();
           if (data) prof = data;
@@ -1069,7 +1074,7 @@ html_content = r'''<!DOCTYPE html>
         isAdmin = true;
         return;
       }
-      if (!supabaseClient || !userId) return;
+      if (!supabaseClient || !userId || !isValidUuid(userId)) return;
 
       try {
         const { data: isAdminRpc } = await supabaseClient.rpc('is_admin');
@@ -1082,11 +1087,7 @@ html_content = r'''<!DOCTYPE html>
         if (roleData && roleData.role === 'admin') {
           isAdmin = true;
         }
-      } catch(e) {
-        if (currentUser && (currentUser.email === 'admin@sru.edu.in' || currentUser.email === 'venkatasaiaitha@gmail.com')) {
-          isAdmin = true;
-        }
-      }
+      } catch(e) {}
     }
 
     // Authentication Tabs (Sign In / Register)
@@ -2098,7 +2099,10 @@ html_content = r'''<!DOCTYPE html>
       };
       const examBadgeClass = examColors[paper.examType] || 'bg-slate-50 text-slate-700 border-slate-200';
       const thumbnailSrc = sanitizeUrl(paper.imageUrl);
-      const canDelete = isAdmin || (currentUser && currentUser.id && paper.userId === currentUser.id);
+      const canDelete = isAdmin || (currentUser && (
+        (currentUser.id && paper.userId && paper.userId === currentUser.id) ||
+        (currentUser.rollNo && paper.uploaderRollNo && currentUser.rollNo !== 'GUEST' && paper.uploaderRollNo.toUpperCase() === currentUser.rollNo.toUpperCase())
+      ));
 
       return `
         <div class="bg-white rounded-2xl border border-slate-200 hover:border-brandBlue/50 shadow-sm hover:shadow-md transition duration-200 flex flex-col overflow-hidden group">
@@ -2745,8 +2749,19 @@ html_content = r'''<!DOCTYPE html>
           }
           const safeFileName = `${crypto.randomUUID()}.${ext}`;
           
-          // Storage Path: paper-images/{user_id_or_public}/{safeFileName}
-          const storageFolder = (currentUser && currentUser.id) ? currentUser.id : 'public';
+          // Determine valid authenticated Supabase user UUID if present
+          let dbUserId = null;
+          if (currentUser && currentUser.id && isValidUuid(currentUser.id)) {
+            try {
+              const { data: { session } } = await supabaseClient.auth.getSession();
+              if (session && session.user && session.user.id === currentUser.id) {
+                dbUserId = session.user.id;
+              }
+            } catch(e) {}
+          }
+
+          // Storage Path: paper-images/{folder}/{safeFileName}
+          const storageFolder = dbUserId || 'public';
           const storagePath = `${storageFolder}/${safeFileName}`;
 
           // Upload to Supabase Storage Bucket 'paper-images'
@@ -2762,10 +2777,10 @@ html_content = r'''<!DOCTYPE html>
             cloudErrorDetail += `Storage: ${storageErr.message || JSON.stringify(storageErr)}. `;
           }
 
-          // Insert into Supabase 'papers' table
+          // Insert into Supabase 'papers' table (user_id MUST be a valid UUID or null)
           const { error: dbErr } = await supabaseClient.from('papers').insert({
             id: paperId,
-            user_id: (currentUser && currentUser.id) ? currentUser.id : null,
+            user_id: dbUserId,
             subject_code: code,
             subject_name: name,
             branch: branch,
