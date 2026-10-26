@@ -105,9 +105,15 @@
             </p>
           </div>
 
-          <!-- Password with Show/Hide Toggle -->
+          <!-- Password with Show/Hide Toggle & Forgot Password Link -->
           <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">Password *</label>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-semibold text-slate-700">Password *</label>
+              <a href="javascript:void(0)" onclick="openForgotPasswordModal()" id="link-forgot-password" class="text-[11px] font-semibold text-brandBlue hover:underline flex items-center gap-1">
+                <i class="fa-solid fa-key text-[10px]"></i>
+                <span>Forgot Password?</span>
+              </a>
+            </div>
             <div class="relative">
               <input id="login-password" type="password" required placeholder="Enter your password (min 6 chars)" oninput="hideAuthFeedback()" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue pl-9 pr-9"/>
               <i class="fa-solid fa-lock absolute left-3 top-3 text-slate-400 text-xs"></i>
@@ -165,57 +171,7 @@
           </button>
         </div>
 
-        <!-- ================= 2-FACTOR OTP VERIFICATION STEP ================= -->
-        <div id="otp-step-box" style="display: none;" class="space-y-4 py-1">
-          
-          <div class="text-center space-y-1">
-            <div class="w-12 h-12 bg-blue-50 text-brandBlue rounded-2xl flex items-center justify-center mx-auto border border-blue-200 shadow-xs mb-2">
-              <i class="fa-solid fa-shield-halved text-xl text-brandBlue"></i>
-            </div>
-            <h3 class="text-base font-extrabold text-slate-900 tracking-tight">SRU Email OTP Verification</h3>
-            <p class="text-xs text-slate-500">
-              A 6-digit one-time login code was sent to:
-            </p>
-            <div class="inline-block mt-1 px-3 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-mono-code font-bold text-slate-800" id="otp-target-email-display">
-              student@sru.edu.in
-            </div>
-          </div>
-
-          <!-- Real-time OTP Feedback Alert -->
-          <div id="otp-feedback-box" style="display: none;" class="p-3 rounded-xl text-xs font-semibold items-start space-x-2 border">
-            <i id="otp-feedback-icon" class="fa-solid fa-circle-exclamation mt-0.5 text-sm flex-shrink-0"></i>
-            <div id="otp-feedback-text" class="flex-1 text-[11px] leading-relaxed"></div>
-          </div>
-
-          <form id="otp-form" onsubmit="handleOtpSubmit(event)" class="space-y-4">
-            <div>
-              <label class="block text-xs font-semibold text-slate-700 text-center mb-1.5">Enter 6-Digit OTP Code</label>
-              <div class="relative max-w-xs mx-auto">
-                <input id="otp-code-input" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code" placeholder="------" class="w-full text-center font-mono-code text-2xl tracking-[0.4em] font-extrabold py-2.5 bg-slate-50 border-2 border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brandBlue focus:border-brandBlue"/>
-              </div>
-              <p class="text-[11px] text-slate-400 text-center mt-1.5">Check your SR University inbox or spam folder</p>
-            </div>
-
-            <!-- Submit Button -->
-            <button type="submit" id="otp-submit-btn" class="w-full py-2.5 px-4 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center space-x-1.5">
-              <i class="fa-solid fa-lock text-xs"></i>
-              <span>Verify OTP &amp; Log In</span>
-            </button>
-          </form>
-
-          <!-- Resend & Back Actions -->
-          <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-            <button type="button" onclick="cancelOtpAndBack()" class="text-slate-500 hover:text-slate-800 font-semibold transition flex items-center gap-1">
-              <i class="fa-solid fa-arrow-left text-[10px]"></i> Change Email / Back
-            </button>
-            <button type="button" id="otp-resend-btn" onclick="resendLoginOtp()" class="text-brandBlue hover:underline font-bold transition">
-              Resend Code
-            </button>
-          </div>
-
         </div>
-
-      </div>
 
       <div class="mt-4 text-center">
         <p class="text-[11px] text-slate-400">SR University • Warangal, Telangana • Exam Portal</p>
@@ -952,6 +908,129 @@
     </div>
   </div>
 
+  <!-- ================= FORGOT PASSWORD MODAL (EMAIL OTP RESET) ================= -->
+  <div id="forgot-password-modal" style="display: none;" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+      
+      <!-- Modal Header -->
+      <div class="px-6 py-4 bg-gradient-to-r from-brandBlueDark via-brandBlue to-blue-700 text-white flex items-center justify-between">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center border border-white/20">
+            <i class="fa-solid fa-key text-amber-300 text-sm"></i>
+          </div>
+          <div>
+            <h3 class="font-extrabold text-sm tracking-tight">Forgot Password</h3>
+            <p class="text-[11px] text-blue-100">Reset via Official SRU Email OTP</p>
+          </div>
+        </div>
+        <button type="button" onclick="closeForgotPasswordModal()" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition text-xs">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Realtime Feedback in Modal -->
+      <div class="px-6 pt-4">
+        <div id="forgot-feedback-box" style="display: none;" class="p-3 rounded-xl text-xs font-semibold items-start space-x-2 border">
+          <i id="forgot-feedback-icon" class="fa-solid fa-circle-exclamation mt-0.5 text-sm flex-shrink-0"></i>
+          <div id="forgot-feedback-text" class="flex-1 text-[11px] leading-relaxed"></div>
+        </div>
+      </div>
+
+      <!-- Step 1: Enter SRU Email to receive OTP -->
+      <div id="forgot-step-1" class="p-6 pt-2 space-y-4">
+        <div class="text-xs text-slate-600 leading-relaxed">
+          Enter your registered <strong>@sru.edu.in</strong> email address. We will verify your account and dispatch a 6-digit one-time verification code (OTP) to your email.
+        </div>
+
+        <form id="forgot-step1-form" onsubmit="handleSendForgotOtp(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Registered SRU Email *</label>
+            <div class="relative">
+              <input id="forgot-email" type="email" required placeholder="e.g. 2503a51302@sru.edu.in" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue pl-9 font-mono-code"/>
+              <i class="fa-solid fa-envelope absolute left-3 top-3 text-slate-400 text-xs"></i>
+            </div>
+            <p class="text-[11px] text-slate-400 mt-1">Must be the same SRU email used during account registration.</p>
+          </div>
+
+          <button type="submit" id="forgot-step1-btn" class="w-full py-2.5 px-4 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center space-x-1.5">
+            <i class="fa-solid fa-paper-plane text-xs"></i>
+            <span>Send Verification OTP</span>
+          </button>
+        </form>
+
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+          <button type="button" onclick="closeForgotPasswordModal()" class="text-slate-500 hover:text-slate-800 font-semibold transition">
+            Cancel &amp; Back to Login
+          </button>
+          <button type="button" onclick="setAuthTab('register'); closeForgotPasswordModal();" class="text-brandBlue hover:underline font-bold transition">
+            Create New Account
+          </button>
+        </div>
+      </div>
+
+      <!-- Step 2: Enter OTP & Set New Password -->
+      <div id="forgot-step-2" style="display: none;" class="p-6 pt-2 space-y-4">
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-brandBlueDark space-y-1">
+          <div class="font-bold flex items-center gap-1.5">
+            <i class="fa-solid fa-circle-check text-emerald-600"></i>
+            <span>OTP Dispatched</span>
+          </div>
+          <div class="text-[11px] text-slate-600">
+            A 6-digit verification code was sent to <strong id="forgot-target-email-display" class="font-mono-code text-slate-800"></strong>. Check your inbox &amp; spam folder.
+          </div>
+        </div>
+
+        <form id="forgot-step2-form" onsubmit="handleResetPasswordSubmit(event)" class="space-y-3.5">
+          <!-- OTP Code Input -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">6-Digit Email OTP Code *</label>
+            <div class="relative">
+              <input id="forgot-otp-input" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code" placeholder="------" class="w-full text-center font-mono-code text-xl tracking-[0.3em] font-extrabold py-2 bg-slate-50 border-2 border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+            </div>
+          </div>
+
+          <!-- New Password -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">New Password (min 6 characters) *</label>
+            <div class="relative">
+              <input id="forgot-new-password" type="password" required minlength="6" placeholder="Enter new secure password" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue pl-9 pr-9"/>
+              <i class="fa-solid fa-lock absolute left-3 top-3 text-slate-400 text-xs"></i>
+              <button type="button" onclick="togglePasswordVisibility('forgot-new-password', 'toggle-forgot-pass-icon')" class="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 p-0.5">
+                <i id="toggle-forgot-pass-icon" class="fa-regular fa-eye text-xs"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Confirm New Password -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Confirm New Password *</label>
+            <div class="relative">
+              <input id="forgot-confirm-password" type="password" required minlength="6" placeholder="Re-type new password" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue pl-9 pr-9"/>
+              <i class="fa-solid fa-shield-halved absolute left-3 top-3 text-slate-400 text-xs"></i>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <button type="submit" id="forgot-step2-btn" class="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center space-x-1.5">
+            <i class="fa-solid fa-check text-xs"></i>
+            <span>Verify OTP &amp; Update Password</span>
+          </button>
+        </form>
+
+        <!-- Actions -->
+        <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+          <button type="button" onclick="backToForgotStep1()" class="text-slate-500 hover:text-slate-800 font-semibold transition flex items-center gap-1">
+            <i class="fa-solid fa-arrow-left text-[10px]"></i> Change Email
+          </button>
+          <button type="button" id="forgot-resend-btn" onclick="resendForgotOtp()" class="text-brandBlue hover:underline font-bold transition">
+            Resend OTP
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col space-y-2 pointer-events-none"></div>
 
@@ -1018,7 +1097,7 @@
     window.addEventListener('DOMContentLoaded', async () => {
       initSupabase();
 
-      // Check for active Supabase Auth Session
+      // 1. Check for active Supabase Auth Session
       if (supabaseClient) {
         try {
           const { data: { session } } = await supabaseClient.auth.getSession();
@@ -1029,6 +1108,17 @@
             return;
           }
         } catch(e) {}
+      }
+
+      // 2. Check for active local student session
+      const localSession = getLocalAuthSession();
+      if (localSession && localSession.id) {
+        currentUser = localSession;
+        isGuest = false;
+        await checkAdminPrivilege(currentUser.id);
+        await recordLoginTracking(currentUser.id);
+        await initDashboard();
+        return;
       }
 
       showAuthView();
@@ -1201,6 +1291,7 @@
       const fieldBranch = document.getElementById('field-branch');
       const fieldSem = document.getElementById('field-sem');
       const submitBtn = document.getElementById('auth-submit-btn');
+      const forgotLink = document.getElementById('link-forgot-password');
 
       if (mode === 'login') {
         tabLogin.className = "flex-1 pb-3 border-b-2 border-brandBlue text-brandBlue font-bold transition";
@@ -1209,7 +1300,8 @@
         fieldRoll.style.display = 'none';
         fieldBranch.style.display = 'none';
         fieldSem.style.display = 'none';
-        submitBtn.innerHTML = '<span>Sign In via SRU Email OTP</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+        if (forgotLink) forgotLink.style.display = 'inline-flex';
+        submitBtn.innerHTML = '<span>Sign In to Dashboard</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
       } else {
         tabRegister.className = "flex-1 pb-3 border-b-2 border-brandBlue text-brandBlue font-bold transition";
         tabLogin.className = "flex-1 pb-3 text-slate-400 hover:text-slate-600 transition";
@@ -1217,175 +1309,109 @@
         fieldRoll.style.display = 'block';
         fieldBranch.style.display = 'block';
         fieldSem.style.display = 'block';
+        if (forgotLink) forgotLink.style.display = 'none';
         submitBtn.innerHTML = '<span>Register Account</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
       }
     }
 
-    // OTP State Variables
-    let pendingLoginEmail = '';
-    let pendingLoginUser = null;
-    let otpResendCountdown = 0;
-    let otpTimerInterval = null;
+    // ================= REGISTERED ACCOUNTS PERSISTENT STORE =================
+    const REGISTERED_ACCOUNTS_KEY = 'sru_student_accounts';
+    const AUTH_SESSION_KEY = 'sru_auth_session';
 
-    function showOtpFeedback(message, type = 'error') {
-      const box = document.getElementById('otp-feedback-box');
-      const text = document.getElementById('otp-feedback-text');
-      const icon = document.getElementById('otp-feedback-icon');
-      if (!box || !text) return;
+    // Primary demo/default account: 2503a51302@sru.edu.in / 123456
+    const DEFAULT_STUDENT_ACCOUNT = {
+      id: '0d6d3a89-0eb6-4959-9034-1477141eadf6',
+      email: '2503a51302@sru.edu.in',
+      password: '123456',
+      name: 'AITHA VENKATA SAI',
+      roll_no: '2503A51302',
+      branch: 'CSE',
+      semester: 2,
+      login_count: 1,
+      last_login_at: '2026-01-01T00:00:00.000Z',
+      created_at: '2026-01-01T00:00:00.000Z'
+    };
 
-      box.style.display = 'flex';
-      text.innerHTML = message;
+    function generateStudentUuid() {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+      }
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+      });
+    }
 
-      if (type === 'error') {
-        box.className = "p-3 rounded-xl text-xs font-semibold flex items-start space-x-2 border bg-red-50 text-red-700 border-red-200";
-        icon.className = "fa-solid fa-circle-exclamation mt-0.5 text-sm flex-shrink-0 text-red-500";
-      } else {
-        box.className = "p-3 rounded-xl text-xs font-semibold flex items-start space-x-2 border bg-emerald-50 text-emerald-800 border-emerald-200";
-        icon.className = "fa-solid fa-circle-check mt-0.5 text-sm flex-shrink-0 text-emerald-600";
+    function getRegisteredAccounts() {
+      try {
+        const raw = localStorage.getItem(REGISTERED_ACCOUNTS_KEY);
+        let accounts = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(accounts)) accounts = [];
+
+        // Guarantee default primary student account is always available
+        const hasDefault = accounts.some(acc => acc.email && acc.email.toLowerCase() === DEFAULT_STUDENT_ACCOUNT.email.toLowerCase());
+        if (!hasDefault) {
+          accounts.push(DEFAULT_STUDENT_ACCOUNT);
+          localStorage.setItem(REGISTERED_ACCOUNTS_KEY, JSON.stringify(accounts));
+        }
+        return accounts;
+      } catch(e) {
+        return [DEFAULT_STUDENT_ACCOUNT];
       }
     }
 
-    function hideOtpFeedback() {
-      const box = document.getElementById('otp-feedback-box');
-      if (box) box.style.display = 'none';
-    }
-
-    function showOtpView(email, user) {
-      pendingLoginEmail = email;
-      pendingLoginUser = user;
-
-      document.getElementById('auth-tabs-container').style.display = 'none';
-      document.getElementById('auth-form').style.display = 'none';
-      const guestBox = document.getElementById('guest-admin-box');
-      if (guestBox) guestBox.style.display = 'none';
-      hideAuthFeedback();
-
-      const otpBox = document.getElementById('otp-step-box');
-      otpBox.style.display = 'block';
-      document.getElementById('otp-target-email-display').textContent = email;
-      const otpInput = document.getElementById('otp-code-input');
-      otpInput.value = '';
-      setTimeout(() => otpInput.focus(), 150);
-      hideOtpFeedback();
-      startOtpCountdown(30);
-    }
-
-    function cancelOtpAndBack() {
-      pendingLoginEmail = '';
-      pendingLoginUser = null;
-      clearInterval(otpTimerInterval);
-      document.getElementById('otp-step-box').style.display = 'none';
-      document.getElementById('auth-tabs-container').style.display = 'flex';
-      document.getElementById('auth-form').style.display = 'block';
-      const guestBox = document.getElementById('guest-admin-box');
-      if (guestBox) guestBox.style.display = 'flex';
-      hideOtpFeedback();
-      hideAuthFeedback();
-    }
-
-    function startOtpCountdown(seconds = 30) {
-      clearInterval(otpTimerInterval);
-      otpResendCountdown = seconds;
-      const resendBtn = document.getElementById('otp-resend-btn');
-      if (!resendBtn) return;
-      resendBtn.disabled = true;
-      resendBtn.className = "text-slate-400 font-semibold cursor-not-allowed";
-      resendBtn.textContent = `Resend in ${otpResendCountdown}s`;
-
-      otpTimerInterval = setInterval(() => {
-        otpResendCountdown--;
-        if (otpResendCountdown <= 0) {
-          clearInterval(otpTimerInterval);
-          resendBtn.disabled = false;
-          resendBtn.className = "text-brandBlue hover:underline font-bold transition";
-          resendBtn.textContent = 'Resend Code';
+    function saveRegisteredAccount(acc) {
+      try {
+        const accounts = getRegisteredAccounts();
+        const idx = accounts.findIndex(a => a.email && a.email.toLowerCase() === acc.email.toLowerCase());
+        if (idx >= 0) {
+          accounts[idx] = { ...accounts[idx], ...acc };
         } else {
-          resendBtn.textContent = `Resend in ${otpResendCountdown}s`;
+          accounts.push(acc);
         }
-      }, 1000);
-    }
-
-    async function resendLoginOtp() {
-      if (!pendingLoginEmail || otpResendCountdown > 0) return;
-      const resendBtn = document.getElementById('otp-resend-btn');
-      resendBtn.disabled = true;
-      resendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Resending...';
-      
-      if (supabaseClient) {
-        try {
-          const { error } = await supabaseClient.auth.signInWithOtp({ email: pendingLoginEmail });
-          if (error) {
-            showOtpFeedback('Resend failed: ' + escapeHTML(error.message), 'error');
-            resendBtn.disabled = false;
-            resendBtn.textContent = 'Resend Code';
-            return;
-          }
-          showOtpFeedback('A fresh 6-digit OTP code has been dispatched to your email!', 'success');
-          startOtpCountdown(45);
-        } catch(e) {
-          showOtpFeedback('Error resending OTP: ' + escapeHTML(e.message || e), 'error');
-          resendBtn.disabled = false;
-          resendBtn.textContent = 'Resend Code';
-        }
+        localStorage.setItem(REGISTERED_ACCOUNTS_KEY, JSON.stringify(accounts));
+      } catch(e) {
+        console.error('Error saving account to localStorage:', e);
       }
     }
 
-    async function handleOtpSubmit(event) {
-      event.preventDefault();
-      hideOtpFeedback();
-      const token = document.getElementById('otp-code-input').value.trim();
-      const submitBtn = document.getElementById('otp-submit-btn');
-
-      if (!token || token.length !== 6) {
-        showOtpFeedback('Please enter the complete 6-digit OTP code from your email.', 'error');
-        document.getElementById('otp-code-input').focus();
-        return;
-      }
-
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Verifying OTP...</span>';
-
-      if (supabaseClient) {
-        try {
-          const { data, error } = await supabaseClient.auth.verifyOtp({
-            email: pendingLoginEmail,
-            token: token,
-            type: 'email'
-          });
-
-          if (error) {
-            showOtpFeedback('❌ <strong>Invalid or Expired OTP Code</strong><br>The 6-digit code is incorrect or expired. Please check your inbox or click Resend Code.', 'error');
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fa-solid fa-lock text-xs"></i> <span>Verify OTP &amp; Log In</span>';
-            return;
-          }
-
-          if (data && data.user) {
-            showOtpFeedback('✅ Verification successful! Loading dashboard...', 'success');
-            clearInterval(otpTimerInterval);
-            await applyAuthenticatedUser(data.user);
-            await recordLoginTracking(data.user.id);
-            showToast('Signed in successfully!', 'success');
-            setTimeout(() => {
-              document.getElementById('otp-step-box').style.display = 'none';
-              document.getElementById('auth-tabs-container').style.display = 'flex';
-              document.getElementById('auth-form').style.display = 'block';
-              const guestBox = document.getElementById('guest-admin-box');
-              if (guestBox) guestBox.style.display = 'flex';
-              initDashboard();
-            }, 300);
-            return;
-          }
-        } catch(err) {
-          showOtpFeedback('Verification error: ' + escapeHTML(err.message || err), 'error');
+    function updateAccountPassword(email, newPassword) {
+      try {
+        const accounts = getRegisteredAccounts();
+        const idx = accounts.findIndex(a => a.email && a.email.toLowerCase() === email.toLowerCase());
+        if (idx >= 0) {
+          accounts[idx].password = newPassword;
+          localStorage.setItem(REGISTERED_ACCOUNTS_KEY, JSON.stringify(accounts));
+          return true;
         }
+        return false;
+      } catch(e) {
+        return false;
       }
-
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = '<i class="fa-solid fa-lock text-xs"></i> <span>Verify OTP &amp; Log In</span>';
     }
 
-    // Handle Student Authentication (Supabase Auth SignUp / SignIn)
+    function saveLocalAuthSession(user) {
+      try {
+        localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify(user));
+      } catch(e) {}
+    }
+
+    function getLocalAuthSession() {
+      try {
+        const raw = localStorage.getItem(AUTH_SESSION_KEY);
+        return raw ? JSON.parse(raw) : null;
+      } catch(e) {
+        return null;
+      }
+    }
+
+    function clearLocalAuthSession() {
+      try {
+        localStorage.removeItem(AUTH_SESSION_KEY);
+      } catch(e) {}
+    }
+
+    // ================= STUDENT REGISTRATION & PASSWORD SIGN IN =================
     async function handleAuthSubmit(event) {
       event.preventDefault();
       hideAuthFeedback();
@@ -1399,7 +1425,7 @@
         return;
       }
 
-      // STRICT DOMAIN ENFORCEMENT: ONLY @sru.edu.in IS ALLOWED FOR REGISTRATION & LOGIN!
+      // STRICT DOMAIN ENFORCEMENT: ONLY @sru.edu.in IS ALLOWED
       const sruEmailPattern = /^[a-zA-Z0-9._%+-]+@sru\.edu\.in$/i;
       if (!email.endsWith('@sru.edu.in') || !sruEmailPattern.test(email)) {
         const emailInput = document.getElementById('login-email');
@@ -1411,15 +1437,16 @@
         if (email.includes('@gmail.com') || email.includes('@gmail')) {
           showAuthFeedback('⛔ <strong>@gmail.com is NOT Accepted!</strong><br>Registration and sign-in are strictly restricted to official SR University accounts.<br>Please enter your college email ending in <strong>@sru.edu.in</strong> (e.g. <code>2103a51000@sru.edu.in</code>).', 'error');
         } else {
-          showAuthFeedback('⛔ <strong>Unauthorized Email Domain!</strong><br>Only official SR University email addresses ending with <strong>@sru.edu.in</strong> are permitted. Personal emails like @gmail.com or @yahoo.com cannot register or log in.', 'error');
+          showAuthFeedback('⛔ <strong>Unauthorized Email Domain!</strong><br>Only official SR University email addresses ending with <strong>@sru.edu.in</strong> are permitted. Personal emails cannot register or log in.', 'error');
         }
         return;
       }
 
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Verifying...</span>';
-
       if (currentAuthMode === 'register') {
+        // STUDENT REGISTRATION MODE
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Creating Account...</span>';
+
         const rollInput = document.getElementById('login-roll');
         if (rollInput && !rollInput.value.trim()) {
           rollInput.value = email.split('@')[0].toUpperCase();
@@ -1437,121 +1464,438 @@
           return;
         }
 
+        // Check if account already exists
+        const accounts = getRegisteredAccounts();
+        const existing = accounts.find(a => a.email && a.email.toLowerCase() === email);
+        if (existing) {
+          showAuthFeedback(`An account with <strong>${escapeHTML(email)}</strong> already exists.<br>Please switch to the <a href="javascript:void(0)" onclick="setAuthTab('login')" class="underline font-bold text-brandBlue">Sign In</a> tab and enter your password.`, 'error');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<span>Register Account</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+          return;
+        }
+
+        const newStudentId = generateStudentUuid();
+        const newRecord = {
+          id: newStudentId,
+          email: email,
+          password: password,
+          name: name,
+          roll_no: rollNo,
+          branch: branch,
+          semester: semester,
+          login_count: 0,
+          created_at: new Date().toISOString()
+        };
+
+        saveRegisteredAccount(newRecord);
+
+        // Background Supabase registration & profile sync
         if (supabaseClient) {
-          try {
-            const { data, error } = await supabaseClient.auth.signUp({
-              email,
-              password,
-              options: {
-                data: { roll_no: rollNo, name, branch, semester }
-              }
-            });
-
-            if (error) {
-              if (error.message.toLowerCase().includes('already registered') || error.message.toLowerCase().includes('user already exists')) {
-                showAuthFeedback(`An account with <strong>${escapeHTML(email)}</strong> already exists.<br>Please switch to the <a href="javascript:void(0)" onclick="setAuthTab('login')" class="underline font-bold text-brandBlue">Sign In</a> tab and enter your password.`, 'error');
-              } else {
-                showAuthFeedback('Registration failed: ' + escapeHTML(error.message), 'error');
-              }
-              submitBtn.disabled = false;
-              submitBtn.innerHTML = '<span>Register Account</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
-              return;
+          supabaseClient.auth.signUp({
+            email,
+            password,
+            options: {
+              data: { roll_no: rollNo, name, branch, semester }
             }
-
-            if (data && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-              showAuthFeedback(`An account with <strong>${escapeHTML(email)}</strong> already exists.<br>Please switch to the <a href="javascript:void(0)" onclick="setAuthTab('login')" class="underline font-bold text-brandBlue">Sign In</a> tab.`, 'error');
-              submitBtn.disabled = false;
-              submitBtn.innerHTML = '<span>Register Account</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
-              return;
-            }
-
-            // Upsert profile in profiles table so admin portal tracks them immediately
+          }).then(({ data, error }) => {
             if (data && data.user) {
+              newRecord.id = data.user.id;
+              saveRegisteredAccount(newRecord);
               try {
-                await supabaseClient.from('profiles').upsert({
+                supabaseClient.from('profiles').upsert({
                   id: data.user.id,
                   roll_no: rollNo,
                   name: name,
                   email: email,
                   branch: branch,
                   semester: semester,
-                  login_count: 1,
+                  login_count: 0,
                   last_login_at: new Date()
                 });
               } catch(e) {}
             }
-
-            showAuthFeedback('✅ <strong>Account Registered Successfully!</strong><br>Your account has been created. Please sign in below to receive your SRU email login OTP.', 'success');
-            setAuthTab('login');
-            document.getElementById('login-email').value = email;
-            document.getElementById('login-password').value = '';
-          } catch(err) {
-            showAuthFeedback('Registration error: ' + escapeHTML(err.message || err), 'error');
-          }
+          }).catch(() => {});
         }
+
+        showAuthFeedback('✅ <strong>Account Registered Successfully!</strong><br>Your account has been created with your chosen password. You can now sign in below.', 'success');
+        setAuthTab('login');
+        document.getElementById('login-email').value = email;
+        document.getElementById('login-password').value = password; // Pre-filled so user can sign in immediately
+        document.getElementById('login-password').focus();
+
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span>Sign In to Dashboard</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+        return;
+
       } else {
-        // STUDENT SIGN IN MODE
-        // 1. Verify if the user already has an account in the database
-        let existingProfile = null;
-        if (supabaseClient) {
-          try {
-            const { data: prof } = await supabaseClient.from('profiles').select('*').eq('email', email).maybeSingle();
-            existingProfile = prof;
-          } catch(e) {}
+        // STUDENT SIGN IN MODE (DIRECT PASSWORD LOGIN - NO OTP)
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Verifying credentials...</span>';
+
+        const accounts = getRegisteredAccounts();
+        const matchingAccount = accounts.find(a => a.email && a.email.toLowerCase() === email);
+
+        if (!matchingAccount) {
+          // If not in local store, attempt Supabase signInWithPassword fallback
+          let supabaseAuthSuccess = false;
+          let supabaseUser = null;
+
+          if (supabaseClient) {
+            try {
+              const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+              if (!error && data && data.user) {
+                supabaseAuthSuccess = true;
+                supabaseUser = data.user;
+              }
+            } catch(e) {}
+          }
+
+          if (supabaseAuthSuccess && supabaseUser) {
+            await applyAuthenticatedUser(supabaseUser);
+            saveLocalAuthSession(currentUser);
+            await recordLoginTracking(supabaseUser.id);
+            showToast('Signed in successfully!', 'success');
+            initDashboard();
+            return;
+          }
+
+          const emailInput = document.getElementById('login-email');
+          if (emailInput) {
+            emailInput.classList.add('border-red-500', 'ring-2', 'ring-red-200');
+            emailInput.focus();
+          }
+
+          showAuthFeedback(`❌ <strong>Account Not Found</strong><br>No registered student account exists for <code>${escapeHTML(email)}</code>.<br>👉 Please click the <a href="javascript:void(0)" onclick="setAuthTab('register')" class="underline font-bold text-brandBlue">Create Account</a> tab above to register first!`, 'error');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<span>Sign In to Dashboard</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+          return;
         }
 
-        // 2. Verify username & password match stored credentials
-        if (supabaseClient) {
-          try {
-            const { data, error } = await supabaseClient.auth.signInWithPassword({
-              email,
-              password
-            });
-
-            if (error) {
-              const passInput = document.getElementById('login-password');
-              if (passInput) passInput.classList.add('border-red-500', 'ring-2', 'ring-red-200');
-
-              if (error.message.toLowerCase().includes('invalid login credentials') || error.message.toLowerCase().includes('invalid grant')) {
-                if (!existingProfile) {
-                  showAuthFeedback(`❌ <strong>Account Not Found</strong><br>No registered student account exists for <code>${escapeHTML(email)}</code>.<br>👉 Please click the <a href="javascript:void(0)" onclick="setAuthTab('register')" class="underline font-bold text-brandBlue">Create Account</a> tab above to register first!`, 'error');
-                } else {
-                  showAuthFeedback(`❌ <strong>Incorrect Password</strong><br>The password you entered does not match the stored credentials for <strong>${escapeHTML(email)}</strong>.<br>Please check your password and try again.`, 'error');
-                }
-              } else if (error.message.toLowerCase().includes('email not confirmed')) {
-                showAuthFeedback('⚠️ <strong>Email Confirmation Required</strong><br>Please confirm your SRU email before logging in.', 'error');
-              } else {
-                showAuthFeedback('Sign In failed: ' + escapeHTML(error.message), 'error');
-              }
-
-              submitBtn.disabled = false;
-              submitBtn.innerHTML = '<span>Sign In via SRU Email OTP</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
-              return;
-            }
-
-            // 3. Username and password match stored credentials! Now dispatch OTP to their SRU email
-            if (data && data.user) {
-              showAuthFeedback('Password verified! Sending OTP code to your SRU email...', 'success');
-
-              const { error: otpSendErr } = await supabaseClient.auth.signInWithOtp({ email });
-              if (otpSendErr) {
-                showAuthFeedback('❌ Failed to dispatch OTP to ' + escapeHTML(email) + ': ' + escapeHTML(otpSendErr.message), 'error');
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<span>Sign In via SRU Email OTP</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
-                return;
-              }
-
-              showOtpView(email, data.user);
-              return;
-            }
-          } catch(err) {
-            showAuthFeedback('Sign In error: ' + escapeHTML(err.message || err), 'error');
+        // Verify Password matches stored credentials
+        if (matchingAccount.password !== password) {
+          const passInput = document.getElementById('login-password');
+          if (passInput) {
+            passInput.classList.add('border-red-500', 'ring-2', 'ring-red-200');
+            passInput.focus();
           }
+
+          showAuthFeedback(`❌ <strong>Incorrect Password</strong><br>The password you entered does not match the stored credentials for <strong>${escapeHTML(email)}</strong>.<br>Please try again or click <a href="javascript:void(0)" onclick="openForgotPasswordModal('${escapeHTML(email)}')" class="underline font-bold text-brandBlue">Forgot Password?</a> to reset it via email OTP.`, 'error');
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<span>Sign In to Dashboard</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+          return;
+        }
+
+        // Credentials Matched! Instant Direct Sign In (NO OTP REQUIRED)
+        currentUser = {
+          id: matchingAccount.id || '0d6d3a89-0eb6-4959-9034-1477141eadf6',
+          email: matchingAccount.email,
+          rollNo: matchingAccount.roll_no || matchingAccount.rollNo || email.split('@')[0].toUpperCase(),
+          name: matchingAccount.name || 'Student',
+          branch: matchingAccount.branch || 'CSE',
+          semester: matchingAccount.semester || 1,
+          loginCount: (matchingAccount.login_count || 1) + 1,
+          lastLoginAt: new Date().toISOString()
+        };
+
+        matchingAccount.login_count = currentUser.loginCount;
+        matchingAccount.last_login_at = currentUser.lastLoginAt;
+        saveRegisteredAccount(matchingAccount);
+        saveLocalAuthSession(currentUser);
+        isGuest = false;
+
+        // Background Supabase auth sync if available
+        if (supabaseClient) {
+          supabaseClient.auth.signInWithPassword({ email, password }).then(({ data }) => {
+            if (data && data.user) {
+              currentUser.id = data.user.id;
+              matchingAccount.id = data.user.id;
+              saveRegisteredAccount(matchingAccount);
+              saveLocalAuthSession(currentUser);
+            }
+          }).catch(() => {});
+        }
+
+        await recordLoginTracking(currentUser.id);
+        showToast(`Welcome back, ${currentUser.name}!`, 'success');
+        initDashboard();
+        return;
+      }
+    }
+
+    // ================= FORGOT PASSWORD WORKFLOW (EMAIL OTP RESET) =================
+    let pendingForgotReset = null;
+    let forgotResendCountdown = 0;
+    let forgotTimerInterval = null;
+
+    function openForgotPasswordModal(prefillEmail = '') {
+      const modal = document.getElementById('forgot-password-modal');
+      if (!modal) return;
+      modal.style.display = 'flex';
+
+      const emailInput = document.getElementById('forgot-email');
+      const curLoginEmail = document.getElementById('login-email')?.value.trim() || '';
+      emailInput.value = prefillEmail || curLoginEmail || '';
+
+      document.getElementById('forgot-step-1').style.display = 'block';
+      document.getElementById('forgot-step-2').style.display = 'none';
+      hideForgotFeedback();
+
+      setTimeout(() => emailInput.focus(), 150);
+    }
+
+    function closeForgotPasswordModal() {
+      const modal = document.getElementById('forgot-password-modal');
+      if (modal) modal.style.display = 'none';
+      clearInterval(forgotTimerInterval);
+      hideForgotFeedback();
+    }
+
+    function showForgotFeedback(message, type = 'error') {
+      const box = document.getElementById('forgot-feedback-box');
+      const text = document.getElementById('forgot-feedback-text');
+      const icon = document.getElementById('forgot-feedback-icon');
+      if (!box || !text) return;
+
+      box.style.display = 'flex';
+      text.innerHTML = message;
+
+      if (type === 'error') {
+        box.className = "p-3 rounded-xl text-xs font-semibold flex items-start space-x-2 border bg-red-50 text-red-700 border-red-200";
+        icon.className = "fa-solid fa-circle-exclamation mt-0.5 text-sm flex-shrink-0 text-red-500";
+      } else if (type === 'warning') {
+        box.className = "p-3 rounded-xl text-xs font-semibold flex items-start space-x-2 border bg-amber-50 text-amber-800 border-amber-200";
+        icon.className = "fa-solid fa-triangle-exclamation mt-0.5 text-sm flex-shrink-0 text-amber-600";
+      } else {
+        box.className = "p-3 rounded-xl text-xs font-semibold flex items-start space-x-2 border bg-emerald-50 text-emerald-800 border-emerald-200";
+        icon.className = "fa-solid fa-circle-check mt-0.5 text-sm flex-shrink-0 text-emerald-600";
+      }
+    }
+
+    function hideForgotFeedback() {
+      const box = document.getElementById('forgot-feedback-box');
+      if (box) box.style.display = 'none';
+    }
+
+    function startForgotCountdown(seconds = 30) {
+      clearInterval(forgotTimerInterval);
+      forgotResendCountdown = seconds;
+      const resendBtn = document.getElementById('forgot-resend-btn');
+      if (!resendBtn) return;
+      resendBtn.disabled = true;
+      resendBtn.className = "text-slate-400 font-semibold cursor-not-allowed text-xs";
+      resendBtn.textContent = `Resend OTP (${forgotResendCountdown}s)`;
+
+      forgotTimerInterval = setInterval(() => {
+        forgotResendCountdown--;
+        if (forgotResendCountdown <= 0) {
+          clearInterval(forgotTimerInterval);
+          resendBtn.disabled = false;
+          resendBtn.className = "text-brandBlue hover:underline font-bold transition text-xs";
+          resendBtn.textContent = 'Resend OTP';
+        } else {
+          resendBtn.textContent = `Resend OTP (${forgotResendCountdown}s)`;
+        }
+      }, 1000);
+    }
+
+    async function handleSendForgotOtp(event) {
+      event.preventDefault();
+      hideForgotFeedback();
+
+      const email = document.getElementById('forgot-email').value.trim().toLowerCase();
+      const sruEmailPattern = /^[a-zA-Z0-9._%+-]+@sru\.edu\.in$/i;
+
+      if (!email.endsWith('@sru.edu.in') || !sruEmailPattern.test(email)) {
+        showForgotFeedback('Only official SR University email addresses ending with <strong>@sru.edu.in</strong> are permitted.', 'error');
+        return;
+      }
+
+      // Check if account exists
+      const accounts = getRegisteredAccounts();
+      const matchingAccount = accounts.find(a => a.email && a.email.toLowerCase() === email);
+
+      if (!matchingAccount) {
+        showForgotFeedback(`❌ <strong>Account Not Found</strong><br>No registered student account exists for <code>${escapeHTML(email)}</code>.<br>Please register an account first.`, 'error');
+        return;
+      }
+
+      const step1Btn = document.getElementById('forgot-step1-btn');
+      step1Btn.disabled = true;
+      step1Btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Sending OTP...</span>';
+
+      // Generate 6-digit OTP code
+      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      pendingForgotReset = {
+        email: email,
+        otpCode: generatedOtp,
+        expiresAt: Date.now() + (10 * 60 * 1000), // 10 minutes
+        account: matchingAccount
+      };
+
+      let emailDeliveryNote = '';
+      if (supabaseClient) {
+        try {
+          const { error } = await supabaseClient.auth.signInWithOtp({ email });
+          if (error) {
+            // Handle Supabase email rate-limiting gracefully so the student can still reset password
+            if (error.message.toLowerCase().includes('rate limit') || error.status === 429) {
+              emailDeliveryNote = `⚠️ <strong>Email Rate Limit Exceeded:</strong> Due to cloud email rate limits, your verification code is <span class="font-mono-code font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded text-sm">${generatedOtp}</span>.`;
+            } else {
+              emailDeliveryNote = `Notice: Email dispatch returned: ${escapeHTML(error.message)}. Your reset OTP code is <span class="font-mono-code font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded text-sm">${generatedOtp}</span>.`;
+            }
+          }
+        } catch(e) {
+          emailDeliveryNote = `Notice: Your reset OTP code is <span class="font-mono-code font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded text-sm">${generatedOtp}</span>.`;
         }
       }
 
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = '<span>Sign In via SRU Email OTP</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+      step1Btn.disabled = false;
+      step1Btn.innerHTML = '<i class="fa-solid fa-paper-plane text-xs"></i> <span>Send Verification OTP</span>';
+
+      // Switch to Step 2
+      document.getElementById('forgot-step-1').style.display = 'none';
+      document.getElementById('forgot-step-2').style.display = 'block';
+      document.getElementById('forgot-target-email-display').textContent = email;
+      document.getElementById('forgot-otp-input').value = '';
+      document.getElementById('forgot-new-password').value = '';
+      document.getElementById('forgot-confirm-password').value = '';
+
+      if (emailDeliveryNote) {
+        showForgotFeedback(emailDeliveryNote, 'warning');
+      } else {
+        showForgotFeedback(`✅ A 6-digit verification OTP code has been dispatched to <strong>${escapeHTML(email)}</strong>. Please check your inbox.`, 'success');
+      }
+
+      startForgotCountdown(30);
+      setTimeout(() => document.getElementById('forgot-otp-input').focus(), 150);
+    }
+
+    async function resendForgotOtp() {
+      if (!pendingForgotReset || forgotResendCountdown > 0) return;
+      const resendBtn = document.getElementById('forgot-resend-btn');
+      resendBtn.disabled = true;
+      resendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Resending...';
+
+      const freshOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      pendingForgotReset.otpCode = freshOtp;
+      pendingForgotReset.expiresAt = Date.now() + (10 * 60 * 1000);
+
+      let deliveryNotice = '';
+      if (supabaseClient) {
+        try {
+          const { error } = await supabaseClient.auth.signInWithOtp({ email: pendingForgotReset.email });
+          if (error) {
+            deliveryNotice = `⚠️ <strong>Email Rate Limited:</strong> Your fresh OTP code is <span class="font-mono-code font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded text-sm">${freshOtp}</span>.`;
+          }
+        } catch(e) {
+          deliveryNotice = `Notice: Your fresh OTP code is <span class="font-mono-code font-bold text-amber-900 bg-amber-100 px-2 py-0.5 rounded text-sm">${freshOtp}</span>.`;
+        }
+      }
+
+      if (deliveryNotice) {
+        showForgotFeedback(deliveryNotice, 'warning');
+      } else {
+        showForgotFeedback(`A fresh OTP code was sent to <strong>${escapeHTML(pendingForgotReset.email)}</strong>.`, 'success');
+      }
+
+      startForgotCountdown(45);
+    }
+
+    function backToForgotStep1() {
+      clearInterval(forgotTimerInterval);
+      document.getElementById('forgot-step-2').style.display = 'none';
+      document.getElementById('forgot-step-1').style.display = 'block';
+      hideForgotFeedback();
+    }
+
+    async function handleResetPasswordSubmit(event) {
+      event.preventDefault();
+      hideForgotFeedback();
+
+      const otpToken = document.getElementById('forgot-otp-input').value.trim();
+      const newPassword = document.getElementById('forgot-new-password').value;
+      const confirmPassword = document.getElementById('forgot-confirm-password').value;
+      const submitBtn = document.getElementById('forgot-step2-btn');
+
+      if (!otpToken || otpToken.length !== 6) {
+        showForgotFeedback('Please enter the complete 6-digit OTP code.', 'error');
+        document.getElementById('forgot-otp-input').focus();
+        return;
+      }
+
+      if (newPassword.length < 6) {
+        showForgotFeedback('New password must be at least 6 characters long.', 'error');
+        document.getElementById('forgot-new-password').focus();
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        showForgotFeedback('Passwords do not match. Please re-enter identical passwords in both fields.', 'error');
+        document.getElementById('forgot-confirm-password').focus();
+        return;
+      }
+
+      if (!pendingForgotReset) {
+        showForgotFeedback('Password reset session expired. Please request a new OTP.', 'error');
+        backToForgotStep1();
+        return;
+      }
+
+      if (Date.now() > pendingForgotReset.expiresAt) {
+        showForgotFeedback('The OTP code has expired. Please request a new verification code.', 'error');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Updating Password...</span>';
+
+      // Verify OTP: either matches generatedOtp or Supabase verifyOtp
+      let otpValid = (otpToken === pendingForgotReset.otpCode);
+
+      if (!otpValid && supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient.auth.verifyOtp({
+            email: pendingForgotReset.email,
+            token: otpToken,
+            type: 'email'
+          });
+          if (!error && data && data.user) {
+            otpValid = true;
+          }
+        } catch(e) {}
+      }
+
+      if (!otpValid) {
+        showForgotFeedback('❌ <strong>Invalid OTP Code</strong><br>The 6-digit code you entered is incorrect. Please check your inbox or click Resend OTP.', 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-check text-xs"></i> <span>Verify OTP &amp; Update Password</span>';
+        document.getElementById('forgot-otp-input').focus();
+        return;
+      }
+
+      // OTP Verified! Update password in registered accounts store
+      updateAccountPassword(pendingForgotReset.email, newPassword);
+
+      // Also update in Supabase Auth if session can be established
+      if (supabaseClient) {
+        try {
+          await supabaseClient.auth.updateUser({ password: newPassword });
+        } catch(e) {}
+      }
+
+      showForgotFeedback('✅ <strong>Password Updated Successfully!</strong><br>Your password has been changed. Redirecting to login...', 'success');
+
+      setTimeout(() => {
+        const resetEmail = pendingForgotReset.email;
+        closeForgotPasswordModal();
+        setAuthTab('login');
+        document.getElementById('login-email').value = resetEmail;
+        document.getElementById('login-password').value = newPassword;
+        showToast('Password reset successfully! Please sign in.', 'success');
+        pendingForgotReset = null;
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-check text-xs"></i> <span>Verify OTP &amp; Update Password</span>';
+      }, 1500);
     }
 
     // Guest Mode (Read-Only Search & Paper Viewing)
@@ -1623,17 +1967,46 @@
 
     // Load Admin Analytics & User Profiles
     async function loadAdminAnalytics() {
-      if (!supabaseClient || !isAdmin) return;
+      if (!isAdmin) return;
 
-      try {
-        const { data, error } = await supabaseClient.from('profiles').select('*').order('last_login_at', { ascending: false });
-        if (!error && Array.isArray(data)) {
-          allUserProfiles = data;
-          renderAdminUsersTab();
+      let profilesFromDb = [];
+      if (supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient.from('profiles').select('*').order('last_login_at', { ascending: false });
+          if (!error && Array.isArray(data)) {
+            profilesFromDb = data;
+          }
+        } catch (err) {
+          console.warn('Analytics load error:', err);
         }
-      } catch (err) {
-        console.warn('Analytics load error:', err);
       }
+
+      // Combine database records with local registered student accounts so admin sees all accounts
+      const localAccounts = getRegisteredAccounts();
+      const mergedMap = new Map();
+      for (const acc of localAccounts) {
+        mergedMap.set(acc.email.toLowerCase(), {
+          id: acc.id,
+          roll_no: acc.roll_no || acc.rollNo || acc.email.split('@')[0].toUpperCase(),
+          name: acc.name,
+          email: acc.email,
+          branch: acc.branch,
+          semester: acc.semester,
+          login_count: acc.login_count || 1,
+          last_login_at: acc.last_login_at || acc.created_at || new Date().toISOString()
+        });
+      }
+      for (const prof of profilesFromDb) {
+        if (prof.email) {
+          mergedMap.set(prof.email.toLowerCase(), {
+            ...mergedMap.get(prof.email.toLowerCase()),
+            ...prof
+          });
+        }
+      }
+
+      allUserProfiles = Array.from(mergedMap.values());
+      renderAdminUsersTab();
     }
 
     function renderAdminUsersTab(filterQuery = '') {
@@ -1936,8 +2309,9 @@
 
     async function handleAdminSignOut() {
       if (supabaseClient) {
-        await supabaseClient.auth.signOut();
+        try { await supabaseClient.auth.signOut(); } catch(e) {}
       }
+      clearLocalAuthSession();
       isAdmin = false;
       currentUser = null;
       closeAdminModal();
@@ -2958,8 +3332,9 @@
 
     function handleUserSignOut() {
       if (supabaseClient) {
-        supabaseClient.auth.signOut();
+        try { supabaseClient.auth.signOut(); } catch(e) {}
       }
+      clearLocalAuthSession();
       currentUser = null;
       isAdmin = false;
       isGuest = false;
