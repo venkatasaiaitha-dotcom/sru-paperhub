@@ -57,7 +57,7 @@
       <div class="bg-white py-8 px-6 shadow-sm border border-slate-200 rounded-2xl sm:px-10">
         
         <!-- Tab Switches (Sign In vs Register) -->
-        <div class="flex border-b border-slate-200 mb-6 text-xs font-semibold">
+        <div id="auth-tabs-container" class="flex border-b border-slate-200 mb-6 text-xs font-semibold">
           <button id="auth-tab-login" onclick="setAuthTab('login')" class="flex-1 pb-3 border-b-2 border-brandBlue text-brandBlue font-bold transition">
             <i class="fa-solid fa-arrow-right-to-bracket mr-1"></i> Sign In
           </button>
@@ -154,7 +154,7 @@
         </form>
 
         <!-- Guest Browsing Mode -->
-        <div class="mt-4 pt-3 border-t border-slate-100 flex flex-col space-y-2">
+        <div id="guest-admin-box" class="mt-4 pt-3 border-t border-slate-100 flex flex-col space-y-2">
           <button type="button" onclick="continueAsGuest()" class="w-full py-2 px-3 text-xs text-slate-600 hover:text-brandBlue font-semibold transition flex items-center justify-center space-x-1.5 rounded-xl border border-slate-200 hover:bg-slate-50">
             <i class="fa-solid fa-eye text-slate-400 text-xs"></i>
             <span>Browse Archive as Guest (Read-Only)</span>
@@ -165,28 +165,54 @@
           </button>
         </div>
 
-        <!-- Quick Demo Testing Credentials Helper Box -->
-        <div class="mt-4 p-3 bg-blue-50/80 border border-blue-200 rounded-xl text-left">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-[10px] font-bold text-brandBlue uppercase tracking-wider flex items-center gap-1">
-              <i class="fa-solid fa-flask text-xs"></i> Demo Testing Credentials
-            </span>
-            <span class="text-[9px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded border border-blue-200">Test Accounts</span>
-          </div>
-          <div class="space-y-1.5 text-[11px] text-slate-700">
-            <div class="flex items-center justify-between">
-              <div><span class="font-semibold text-slate-900">Student:</span> <code class="bg-white px-1 py-0.5 rounded border border-blue-200 text-brandBlue">student@sru.edu.in</code></div>
-              <button type="button" onclick="fillDemoStudent()" class="px-2 py-0.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-[10px] font-bold transition shadow-xs">Auto-Fill</button>
+        <!-- ================= 2-FACTOR OTP VERIFICATION STEP ================= -->
+        <div id="otp-step-box" style="display: none;" class="space-y-4 py-1">
+          
+          <div class="text-center space-y-1">
+            <div class="w-12 h-12 bg-blue-50 text-brandBlue rounded-2xl flex items-center justify-center mx-auto border border-blue-200 shadow-xs mb-2">
+              <i class="fa-solid fa-shield-halved text-xl text-brandBlue"></i>
             </div>
-            <div class="flex items-center justify-between">
-              <div><span class="font-semibold text-slate-900">Password:</span> <code class="bg-white px-1 py-0.5 rounded border border-blue-200 text-slate-800">student@2026</code></div>
-              <span class="text-[10px] text-slate-400">Master Key</span>
-            </div>
-            <div class="pt-1.5 mt-1 border-t border-blue-200/60 flex items-center justify-between">
-              <div><span class="font-semibold text-slate-900">Admin:</span> <code class="bg-white px-1 py-0.5 rounded border border-blue-200 text-amber-700">admin@sru.edu.in</code></div>
-              <button type="button" onclick="openAdminModal(); fillDemoAdmin()" class="px-2 py-0.5 bg-slate-900 hover:bg-black text-white rounded text-[10px] font-bold transition shadow-xs">Admin Login</button>
+            <h3 class="text-base font-extrabold text-slate-900 tracking-tight">SRU Email OTP Verification</h3>
+            <p class="text-xs text-slate-500">
+              A 6-digit one-time login code was sent to:
+            </p>
+            <div class="inline-block mt-1 px-3 py-1 bg-slate-100 border border-slate-200 rounded-lg text-xs font-mono-code font-bold text-slate-800" id="otp-target-email-display">
+              student@sru.edu.in
             </div>
           </div>
+
+          <!-- Real-time OTP Feedback Alert -->
+          <div id="otp-feedback-box" style="display: none;" class="p-3 rounded-xl text-xs font-semibold items-start space-x-2 border">
+            <i id="otp-feedback-icon" class="fa-solid fa-circle-exclamation mt-0.5 text-sm flex-shrink-0"></i>
+            <div id="otp-feedback-text" class="flex-1 text-[11px] leading-relaxed"></div>
+          </div>
+
+          <form id="otp-form" onsubmit="handleOtpSubmit(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 text-center mb-1.5">Enter 6-Digit OTP Code</label>
+              <div class="relative max-w-xs mx-auto">
+                <input id="otp-code-input" type="text" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" required autocomplete="one-time-code" placeholder="------" class="w-full text-center font-mono-code text-2xl tracking-[0.4em] font-extrabold py-2.5 bg-slate-50 border-2 border-slate-300 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-brandBlue focus:border-brandBlue"/>
+              </div>
+              <p class="text-[11px] text-slate-400 text-center mt-1.5">Check your SR University inbox or spam folder</p>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" id="otp-submit-btn" class="w-full py-2.5 px-4 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center space-x-1.5">
+              <i class="fa-solid fa-lock text-xs"></i>
+              <span>Verify OTP &amp; Log In</span>
+            </button>
+          </form>
+
+          <!-- Resend & Back Actions -->
+          <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+            <button type="button" onclick="cancelOtpAndBack()" class="text-slate-500 hover:text-slate-800 font-semibold transition flex items-center gap-1">
+              <i class="fa-solid fa-arrow-left text-[10px]"></i> Change Email / Back
+            </button>
+            <button type="button" id="otp-resend-btn" onclick="resendLoginOtp()" class="text-brandBlue hover:underline font-bold transition">
+              Resend Code
+            </button>
+          </div>
+
         </div>
 
       </div>
@@ -295,7 +321,7 @@
             </div>
             <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Past Examination Question Papers</h1>
             <p class="text-xs sm:text-sm text-slate-500 leading-relaxed">
-              Browse, search, and download question papers across all engineering regulations (R18 to R24). Upload exam papers to help your batchmates.
+              Browse, search, and download question papers across all engineering regulations (R18 to R26). Upload exam papers to help your batchmates.
             </p>
           </div>
 
@@ -346,7 +372,8 @@
           <!-- Regulation Filter -->
           <div>
             <select id="filter-regulation" onchange="handleSearchFilter()" class="w-full bg-slate-50 border border-slate-300 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue font-medium">
-              <option value="ALL">All Regulations (R18 - R24)</option>
+              <option value="ALL">All Regulations (R18 - R26)</option>
+              <option value="R26">R26 Regulation (2026)</option>
               <option value="R24">R24 Regulation</option>
               <option value="R22">R22 Regulation</option>
               <option value="R21">R21 Regulation</option>
@@ -597,6 +624,7 @@
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1">Academic Regulation *</label>
             <select id="up-regulation" required onchange="checkRealtimeDuplicates()" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue">
+              <option value="R26">R26 Regulation (2026)</option>
               <option value="R24">R24 Regulation</option>
               <option value="R22" selected>R22 Regulation</option>
               <option value="R21">R21 Regulation</option>
@@ -724,17 +752,6 @@
 
       <!-- If Not Logged In As Admin -->
       <div id="admin-login-box">
-        <div class="mb-3 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-center justify-between">
-          <div>
-            <div class="font-bold flex items-center gap-1.5 text-amber-950">
-              <i class="fa-solid fa-key text-amber-600"></i> Demo Administrator Credentials
-            </div>
-            <div class="text-[11px] text-amber-800 mt-0.5">Email: <code>admin@sru.edu.in</code> &bull; Passcode: <code>student@2026</code></div>
-          </div>
-          <button type="button" onclick="fillDemoAdmin()" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-lg text-[11px] transition">
-            Auto-Fill
-          </button>
-        </div>
         <form onsubmit="handleAdminLogin(event)" class="space-y-3 max-w-md mx-auto py-2">
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1">Administrator Email *</label>
@@ -1192,7 +1209,7 @@
         fieldRoll.style.display = 'none';
         fieldBranch.style.display = 'none';
         fieldSem.style.display = 'none';
-        submitBtn.innerHTML = '<span>Sign In to Dashboard</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+        submitBtn.innerHTML = '<span>Sign In via SRU Email OTP</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
       } else {
         tabRegister.className = "flex-1 pb-3 border-b-2 border-brandBlue text-brandBlue font-bold transition";
         tabLogin.className = "flex-1 pb-3 text-slate-400 hover:text-slate-600 transition";
@@ -1200,33 +1217,172 @@
         fieldRoll.style.display = 'block';
         fieldBranch.style.display = 'block';
         fieldSem.style.display = 'block';
-        submitBtn.innerHTML = '<span>Register &amp; Continue</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+        submitBtn.innerHTML = '<span>Register Account</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
       }
     }
 
-    // Helper to auto-fill demo credentials for testing
-    function fillDemoStudent() {
-      setAuthTab('login');
-      const emailInput = document.getElementById('login-email');
-      const passInput = document.getElementById('login-password');
-      if (emailInput) {
-        emailInput.value = 'student@sru.edu.in';
-        emailInput.classList.remove('border-red-500', 'ring-2', 'ring-red-200');
+    // OTP State Variables
+    let pendingLoginEmail = '';
+    let pendingLoginUser = null;
+    let otpResendCountdown = 0;
+    let otpTimerInterval = null;
+
+    function showOtpFeedback(message, type = 'error') {
+      const box = document.getElementById('otp-feedback-box');
+      const text = document.getElementById('otp-feedback-text');
+      const icon = document.getElementById('otp-feedback-icon');
+      if (!box || !text) return;
+
+      box.style.display = 'flex';
+      text.innerHTML = message;
+
+      if (type === 'error') {
+        box.className = "p-3 rounded-xl text-xs font-semibold flex items-start space-x-2 border bg-red-50 text-red-700 border-red-200";
+        icon.className = "fa-solid fa-circle-exclamation mt-0.5 text-sm flex-shrink-0 text-red-500";
+      } else {
+        box.className = "p-3 rounded-xl text-xs font-semibold flex items-start space-x-2 border bg-emerald-50 text-emerald-800 border-emerald-200";
+        icon.className = "fa-solid fa-circle-check mt-0.5 text-sm flex-shrink-0 text-emerald-600";
       }
-      if (passInput) {
-        passInput.value = 'student@2026';
-        passInput.classList.remove('border-red-500', 'ring-2', 'ring-red-200');
-      }
+    }
+
+    function hideOtpFeedback() {
+      const box = document.getElementById('otp-feedback-box');
+      if (box) box.style.display = 'none';
+    }
+
+    function showOtpView(email, user) {
+      pendingLoginEmail = email;
+      pendingLoginUser = user;
+
+      document.getElementById('auth-tabs-container').style.display = 'none';
+      document.getElementById('auth-form').style.display = 'none';
+      const guestBox = document.getElementById('guest-admin-box');
+      if (guestBox) guestBox.style.display = 'none';
       hideAuthFeedback();
-      showToast('Demo Student credentials loaded! Click Sign In.', 'info');
+
+      const otpBox = document.getElementById('otp-step-box');
+      otpBox.style.display = 'block';
+      document.getElementById('otp-target-email-display').textContent = email;
+      const otpInput = document.getElementById('otp-code-input');
+      otpInput.value = '';
+      setTimeout(() => otpInput.focus(), 150);
+      hideOtpFeedback();
+      startOtpCountdown(30);
     }
 
-    function fillDemoAdmin() {
-      const emailInput = document.getElementById('admin-email-input');
-      const passInput = document.getElementById('admin-password-input');
-      if (emailInput) emailInput.value = 'admin@sru.edu.in';
-      if (passInput) passInput.value = 'student@2026';
-      showToast('Demo Admin credentials loaded! Click Sign In.', 'info');
+    function cancelOtpAndBack() {
+      pendingLoginEmail = '';
+      pendingLoginUser = null;
+      clearInterval(otpTimerInterval);
+      document.getElementById('otp-step-box').style.display = 'none';
+      document.getElementById('auth-tabs-container').style.display = 'flex';
+      document.getElementById('auth-form').style.display = 'block';
+      const guestBox = document.getElementById('guest-admin-box');
+      if (guestBox) guestBox.style.display = 'flex';
+      hideOtpFeedback();
+      hideAuthFeedback();
+    }
+
+    function startOtpCountdown(seconds = 30) {
+      clearInterval(otpTimerInterval);
+      otpResendCountdown = seconds;
+      const resendBtn = document.getElementById('otp-resend-btn');
+      if (!resendBtn) return;
+      resendBtn.disabled = true;
+      resendBtn.className = "text-slate-400 font-semibold cursor-not-allowed";
+      resendBtn.textContent = `Resend in ${otpResendCountdown}s`;
+
+      otpTimerInterval = setInterval(() => {
+        otpResendCountdown--;
+        if (otpResendCountdown <= 0) {
+          clearInterval(otpTimerInterval);
+          resendBtn.disabled = false;
+          resendBtn.className = "text-brandBlue hover:underline font-bold transition";
+          resendBtn.textContent = 'Resend Code';
+        } else {
+          resendBtn.textContent = `Resend in ${otpResendCountdown}s`;
+        }
+      }, 1000);
+    }
+
+    async function resendLoginOtp() {
+      if (!pendingLoginEmail || otpResendCountdown > 0) return;
+      const resendBtn = document.getElementById('otp-resend-btn');
+      resendBtn.disabled = true;
+      resendBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Resending...';
+      
+      if (supabaseClient) {
+        try {
+          const { error } = await supabaseClient.auth.signInWithOtp({ email: pendingLoginEmail });
+          if (error) {
+            showOtpFeedback('Resend failed: ' + escapeHTML(error.message), 'error');
+            resendBtn.disabled = false;
+            resendBtn.textContent = 'Resend Code';
+            return;
+          }
+          showOtpFeedback('A fresh 6-digit OTP code has been dispatched to your email!', 'success');
+          startOtpCountdown(45);
+        } catch(e) {
+          showOtpFeedback('Error resending OTP: ' + escapeHTML(e.message || e), 'error');
+          resendBtn.disabled = false;
+          resendBtn.textContent = 'Resend Code';
+        }
+      }
+    }
+
+    async function handleOtpSubmit(event) {
+      event.preventDefault();
+      hideOtpFeedback();
+      const token = document.getElementById('otp-code-input').value.trim();
+      const submitBtn = document.getElementById('otp-submit-btn');
+
+      if (!token || token.length !== 6) {
+        showOtpFeedback('Please enter the complete 6-digit OTP code from your email.', 'error');
+        document.getElementById('otp-code-input').focus();
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Verifying OTP...</span>';
+
+      if (supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient.auth.verifyOtp({
+            email: pendingLoginEmail,
+            token: token,
+            type: 'email'
+          });
+
+          if (error) {
+            showOtpFeedback('❌ <strong>Invalid or Expired OTP Code</strong><br>The 6-digit code is incorrect or expired. Please check your inbox or click Resend Code.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fa-solid fa-lock text-xs"></i> <span>Verify OTP &amp; Log In</span>';
+            return;
+          }
+
+          if (data && data.user) {
+            showOtpFeedback('✅ Verification successful! Loading dashboard...', 'success');
+            clearInterval(otpTimerInterval);
+            await applyAuthenticatedUser(data.user);
+            await recordLoginTracking(data.user.id);
+            showToast('Signed in successfully!', 'success');
+            setTimeout(() => {
+              document.getElementById('otp-step-box').style.display = 'none';
+              document.getElementById('auth-tabs-container').style.display = 'flex';
+              document.getElementById('auth-form').style.display = 'block';
+              const guestBox = document.getElementById('guest-admin-box');
+              if (guestBox) guestBox.style.display = 'flex';
+              initDashboard();
+            }, 300);
+            return;
+          }
+        } catch(err) {
+          showOtpFeedback('Verification error: ' + escapeHTML(err.message || err), 'error');
+        }
+      }
+
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i class="fa-solid fa-lock text-xs"></i> <span>Verify OTP &amp; Log In</span>';
     }
 
     // Handle Student Authentication (Supabase Auth SignUp / SignIn)
@@ -1261,7 +1417,7 @@
       }
 
       submitBtn.disabled = true;
-      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Authenticating...</span>';
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Verifying...</span>';
 
       if (currentAuthMode === 'register') {
         const rollInput = document.getElementById('login-roll');
@@ -1277,7 +1433,7 @@
           showAuthFeedback('Password must be at least 6 characters long.', 'error');
           document.getElementById('login-password').focus();
           submitBtn.disabled = false;
-          submitBtn.innerHTML = '<span>Register &amp; Continue</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+          submitBtn.innerHTML = '<span>Register Account</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
           return;
         }
 
@@ -1293,91 +1449,58 @@
 
             if (error) {
               if (error.message.toLowerCase().includes('already registered') || error.message.toLowerCase().includes('user already exists')) {
-                showAuthFeedback(`An account with <strong>${escapeHTML(email)}</strong> already exists. Please switch to the <a href="javascript:void(0)" onclick="setAuthTab('login')" class="underline font-bold text-brandBlue">Sign In</a> tab and enter your password.`, 'error');
-              } else if (error.message.toLowerCase().includes('rate limit') || error.status === 429) {
-                // Free-tier rate limit fallback: Log student in without failing
-                showAuthFeedback('Account registered! Logging you in...', 'success');
-                const registeredUser = {
-                  id: 'stu-' + Math.abs(email.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0)),
-                  email: email,
-                  user_metadata: { name, roll_no: rollNo, branch, semester }
-                };
-                await applyAuthenticatedUser(registeredUser);
-                await recordLoginTracking(registeredUser.id);
-                showToast('Welcome to SRU PaperHub!', 'success');
-                setTimeout(() => initDashboard(), 300);
-                return;
+                showAuthFeedback(`An account with <strong>${escapeHTML(email)}</strong> already exists.<br>Please switch to the <a href="javascript:void(0)" onclick="setAuthTab('login')" class="underline font-bold text-brandBlue">Sign In</a> tab and enter your password.`, 'error');
               } else {
                 showAuthFeedback('Registration failed: ' + escapeHTML(error.message), 'error');
               }
               submitBtn.disabled = false;
-              submitBtn.innerHTML = '<span>Register &amp; Continue</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+              submitBtn.innerHTML = '<span>Register Account</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
               return;
             }
 
-            // If Supabase returns empty identities on existing email
             if (data && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-              showAuthFeedback(`An account with <strong>${escapeHTML(email)}</strong> already exists. Please switch to the <a href="javascript:void(0)" onclick="setAuthTab('login')" class="underline font-bold text-brandBlue">Sign In</a> tab.`, 'error');
+              showAuthFeedback(`An account with <strong>${escapeHTML(email)}</strong> already exists.<br>Please switch to the <a href="javascript:void(0)" onclick="setAuthTab('login')" class="underline font-bold text-brandBlue">Sign In</a> tab.`, 'error');
               submitBtn.disabled = false;
-              submitBtn.innerHTML = '<span>Register &amp; Continue</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+              submitBtn.innerHTML = '<span>Register Account</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
               return;
             }
 
-            // If session is immediately active
-            if (data && data.session && data.user) {
-              showAuthFeedback('Account registered and verified! Logging you in...', 'success');
-              await applyAuthenticatedUser(data.user);
-              await recordLoginTracking(data.user.id);
-              showToast('Account registered and logged in!', 'success');
-              setTimeout(() => initDashboard(), 300);
-              return;
+            // Upsert profile in profiles table so admin portal tracks them immediately
+            if (data && data.user) {
+              try {
+                await supabaseClient.from('profiles').upsert({
+                  id: data.user.id,
+                  roll_no: rollNo,
+                  name: name,
+                  email: email,
+                  branch: branch,
+                  semester: semester,
+                  login_count: 1,
+                  last_login_at: new Date()
+                });
+              } catch(e) {}
             }
 
-            // Attempt immediate login with the registered password
-            const { data: signInData, error: signInErr } = await supabaseClient.auth.signInWithPassword({
-              email,
-              password
-            });
-
-            if (!signInErr && signInData && signInData.user) {
-              showAuthFeedback('Account created and logged in successfully!', 'success');
-              await applyAuthenticatedUser(signInData.user);
-              await recordLoginTracking(signInData.user.id);
-              showToast('Welcome to SRU PaperHub!', 'success');
-              setTimeout(() => initDashboard(), 300);
-              return;
-            }
-
-            showAuthFeedback('Account created! Please switch to Sign In and enter your password.', 'success');
+            showAuthFeedback('✅ <strong>Account Registered Successfully!</strong><br>Your account has been created. Please sign in below to receive your SRU email login OTP.', 'success');
             setAuthTab('login');
+            document.getElementById('login-email').value = email;
+            document.getElementById('login-password').value = '';
           } catch(err) {
             showAuthFeedback('Registration error: ' + escapeHTML(err.message || err), 'error');
           }
         }
       } else {
-        // Student Sign In Mode
-        // 1. Instant Demo Student Passcode Verification (Guarantees instant testing)
-        if (password === 'student@2026' || password === 'demo@2026' || password === 'sru@2026') {
-          showAuthFeedback('Demo student credentials verified! Loading dashboard...', 'success');
-          const rollCandidate = email.split('@')[0].toUpperCase();
-          const demoUser = {
-            id: 'stu-' + Math.abs(email.split('').reduce((a,b)=>{a=((a<<5)-a)+b.charCodeAt(0);return a&a},0)),
-            email: email,
-            user_metadata: {
-              name: rollCandidate.startsWith('2') ? 'SRU Student (' + rollCandidate + ')' : 'SRU Demo Student',
-              roll_no: rollCandidate,
-              branch: 'CSE',
-              semester: 4
-            }
-          };
-          await applyAuthenticatedUser(demoUser);
-          await recordLoginTracking(demoUser.id);
-          showToast('Signed in with Demo Student credentials!', 'success');
-          setTimeout(() => initDashboard(), 300);
-          return;
+        // STUDENT SIGN IN MODE
+        // 1. Verify if the user already has an account in the database
+        let existingProfile = null;
+        if (supabaseClient) {
+          try {
+            const { data: prof } = await supabaseClient.from('profiles').select('*').eq('email', email).maybeSingle();
+            existingProfile = prof;
+          } catch(e) {}
         }
 
-        // 2. Supabase Cloud Auth Verification
+        // 2. Verify username & password match stored credentials
         if (supabaseClient) {
           try {
             const { data, error } = await supabaseClient.auth.signInWithPassword({
@@ -1390,24 +1513,35 @@
               if (passInput) passInput.classList.add('border-red-500', 'ring-2', 'ring-red-200');
 
               if (error.message.toLowerCase().includes('invalid login credentials') || error.message.toLowerCase().includes('invalid grant')) {
-                showAuthFeedback('❌ <strong>Account Not Found or Incorrect Password</strong><br>No account matches this email and password.<br>👉 <em>First time visiting?</em> Click the <a href="javascript:void(0)" onclick="setAuthTab(\'register\')" class="underline font-bold text-brandBlue">Create Account</a> tab above to register!', 'error');
+                if (!existingProfile) {
+                  showAuthFeedback(`❌ <strong>Account Not Found</strong><br>No registered student account exists for <code>${escapeHTML(email)}</code>.<br>👉 Please click the <a href="javascript:void(0)" onclick="setAuthTab('register')" class="underline font-bold text-brandBlue">Create Account</a> tab above to register first!`, 'error');
+                } else {
+                  showAuthFeedback(`❌ <strong>Incorrect Password</strong><br>The password you entered does not match the stored credentials for <strong>${escapeHTML(email)}</strong>.<br>Please check your password and try again.`, 'error');
+                }
               } else if (error.message.toLowerCase().includes('email not confirmed')) {
-                showAuthFeedback('⚠️ <strong>Email Not Confirmed</strong><br>Please check your inbox to confirm your email address.', 'error');
+                showAuthFeedback('⚠️ <strong>Email Confirmation Required</strong><br>Please confirm your SRU email before logging in.', 'error');
               } else {
                 showAuthFeedback('Sign In failed: ' + escapeHTML(error.message), 'error');
               }
 
               submitBtn.disabled = false;
-              submitBtn.innerHTML = '<span>Sign In to Dashboard</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+              submitBtn.innerHTML = '<span>Sign In via SRU Email OTP</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
               return;
             }
 
+            // 3. Username and password match stored credentials! Now dispatch OTP to their SRU email
             if (data && data.user) {
-              showAuthFeedback('Password verified! Loading your dashboard...', 'success');
-              await applyAuthenticatedUser(data.user);
-              await recordLoginTracking(data.user.id);
-              showToast('Signed in successfully!', 'success');
-              setTimeout(() => initDashboard(), 300);
+              showAuthFeedback('Password verified! Sending OTP code to your SRU email...', 'success');
+
+              const { error: otpSendErr } = await supabaseClient.auth.signInWithOtp({ email });
+              if (otpSendErr) {
+                showAuthFeedback('❌ Failed to dispatch OTP to ' + escapeHTML(email) + ': ' + escapeHTML(otpSendErr.message), 'error');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span>Sign In via SRU Email OTP</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
+                return;
+              }
+
+              showOtpView(email, data.user);
               return;
             }
           } catch(err) {
@@ -1417,6 +1551,7 @@
       }
 
       submitBtn.disabled = false;
+      submitBtn.innerHTML = '<span>Sign In via SRU Email OTP</span> <i class="fa-solid fa-arrow-right text-xs"></i>';
     }
 
     // Guest Mode (Read-Only Search & Paper Viewing)

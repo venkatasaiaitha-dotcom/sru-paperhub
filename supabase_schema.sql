@@ -74,7 +74,7 @@ CREATE TABLE IF NOT EXISTS public.papers (
     CONSTRAINT chk_paper_branch CHECK (branch IN ('CSE', 'AIML', 'AIDS', 'ECE', 'EEE', 'MECH', 'CIVIL')),
     CONSTRAINT chk_paper_sem CHECK (semester BETWEEN 1 AND 8),
     CONSTRAINT chk_paper_exam CHECK (exam_type IN ('MID_1', 'MID_2', 'SEM_END', 'SUPPLY')),
-    CONSTRAINT chk_paper_reg CHECK (regulation IN ('R18', 'R19', 'R20', 'R21', 'R22', 'R24')),
+    CONSTRAINT chk_paper_reg CHECK (regulation IN ('R18', 'R19', 'R20', 'R21', 'R22', 'R24', 'R26')),
     CONSTRAINT chk_paper_year CHECK (academic_year ~ '^[0-9]{4}-[0-9]{4}$'),
     CONSTRAINT chk_paper_img CHECK (length(image_url) > 5)
 );
