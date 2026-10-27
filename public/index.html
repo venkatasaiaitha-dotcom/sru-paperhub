@@ -444,19 +444,25 @@
 
         <!-- Viewer Controls -->
         <div class="flex items-center space-x-1.5 flex-shrink-0">
-          <button type="button" onclick="zoomViewer(0.2)" class="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition text-xs font-semibold flex items-center space-x-1" title="Zoom In">
-            <i class="fa-solid fa-magnifying-glass-plus text-xs"></i>
-            <span class="hidden sm:inline">Zoom In</span>
-          </button>
-          <button type="button" onclick="zoomViewer(-0.2)" class="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition text-xs font-semibold flex items-center space-x-1" title="Zoom Out">
-            <i class="fa-solid fa-magnifying-glass-minus text-xs"></i>
-            <span class="hidden sm:inline">Zoom Out</span>
-          </button>
-          <button type="button" onclick="rotateViewer()" class="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition text-xs font-semibold flex items-center space-x-1" title="Rotate 90°">
-            <i class="fa-solid fa-rotate-right text-xs"></i>
-            <span class="hidden sm:inline">Rotate</span>
-          </button>
-          <button type="button" onclick="downloadActivePaperImage()" class="p-2 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl transition text-xs font-bold flex items-center space-x-1" title="Download Image">
+          <div id="viewer-image-controls" class="flex items-center space-x-1.5">
+            <button type="button" onclick="zoomViewer(0.2)" class="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition text-xs font-semibold flex items-center space-x-1" title="Zoom In">
+              <i class="fa-solid fa-magnifying-glass-plus text-xs"></i>
+              <span class="hidden sm:inline">Zoom In</span>
+            </button>
+            <button type="button" onclick="zoomViewer(-0.2)" class="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition text-xs font-semibold flex items-center space-x-1" title="Zoom Out">
+              <i class="fa-solid fa-magnifying-glass-minus text-xs"></i>
+              <span class="hidden sm:inline">Zoom Out</span>
+            </button>
+            <button type="button" onclick="rotateViewer()" class="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition text-xs font-semibold flex items-center space-x-1" title="Rotate 90°">
+              <i class="fa-solid fa-rotate-right text-xs"></i>
+              <span class="hidden sm:inline">Rotate</span>
+            </button>
+          </div>
+          <a id="viewer-pdf-open-btn" href="#" target="_blank" rel="noopener noreferrer" style="display: none;" class="p-2 text-slate-700 hover:bg-slate-100 rounded-xl transition text-xs font-semibold flex items-center space-x-1" title="Open Fullscreen in New Window">
+            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+            <span class="hidden sm:inline">Open in Tab</span>
+          </a>
+          <button type="button" onclick="downloadActivePaperImage()" class="p-2 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl transition text-xs font-bold flex items-center space-x-1" title="Download Document">
             <i class="fa-solid fa-arrow-down text-xs"></i>
             <span class="hidden sm:inline">Download</span>
           </button>
@@ -466,9 +472,33 @@
         </div>
       </div>
 
-      <!-- Image Display Container -->
-      <div class="flex-1 bg-slate-900 rounded-none overflow-auto flex items-center justify-center p-4 relative select-none">
-        <img id="viewer-image" src="" alt="Question Paper" class="max-h-full max-w-full object-contain rounded-lg shadow-2xl transition-transform duration-150 origin-center"/>
+      <!-- Display Area (Supports both Image & PDF) -->
+      <div id="viewer-main-canvas" class="flex-1 bg-slate-900 rounded-none overflow-hidden relative flex flex-col items-center justify-center">
+
+        <!-- 1. Image Viewer Container -->
+        <div id="viewer-image-container" class="w-full h-full flex items-center justify-center overflow-auto p-4 select-none">
+          <img id="viewer-image" src="" alt="Question Paper" class="max-h-full max-w-full object-contain rounded-lg shadow-2xl transition-transform duration-150 origin-center"/>
+        </div>
+
+        <!-- 2. PDF Viewer Container -->
+        <div id="viewer-pdf-container" style="display: none;" class="w-full h-full flex flex-col bg-slate-900 overflow-hidden">
+          <div class="px-4 py-2 bg-slate-800 border-b border-slate-700 flex items-center justify-between text-xs text-slate-300 flex-shrink-0">
+            <div class="flex items-center space-x-2">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-red-500/20 text-red-300 border border-red-500/30 font-mono-code flex items-center gap-1">
+                <i class="fa-solid fa-file-pdf text-[10px]"></i> PDF DOCUMENT
+              </span>
+              <span id="viewer-pdf-name" class="font-mono-code text-[11px] text-slate-300 truncate max-w-xs sm:max-w-md">paper.pdf</span>
+            </div>
+            <a id="viewer-pdf-tab-link" href="#" target="_blank" rel="noopener noreferrer" class="text-xs text-brandBlue hover:text-blue-300 font-bold transition flex items-center gap-1">
+              <i class="fa-solid fa-arrow-up-right-from-square text-[11px]"></i>
+              <span>View Fullscreen</span>
+            </a>
+          </div>
+          <div class="flex-1 w-full h-full relative bg-slate-900">
+            <iframe id="viewer-pdf-frame" src="" class="w-full h-full border-0 bg-white" title="SRU Question Paper PDF Viewer"></iframe>
+          </div>
+        </div>
+
       </div>
 
       <!-- Bottom Footer Meta Info -->
@@ -478,7 +508,8 @@
           <span>•</span>
           <span><i class="fa-solid fa-calendar text-slate-400 mr-1"></i> <span id="viewer-year">2024-2025</span></span>
         </div>
-        <div>
+        <div class="flex items-center space-x-2">
+          <span id="viewer-format-badge" class="px-1.5 py-0.5 rounded text-[10px] font-bold font-mono-code bg-slate-200 text-slate-700">DOCUMENT</span>
           <span id="viewer-marks" class="font-mono-code font-bold text-slate-700">30 Marks</span>
         </div>
       </div>
@@ -2177,7 +2208,7 @@
         'SUPPLY': 'bg-amber-50 text-amber-700 border-amber-200'
       };
       const examBadgeClass = examColors[paper.examType] || 'bg-slate-50 text-slate-700 border-slate-200';
-      const thumbnailSrc = sanitizeUrl(paper.imageUrl);
+      const isPdf = isPdfDocument(paper.imageUrl);
       const canDelete = isAdmin || (currentUser && (
         (currentUser.id && paper.userId && paper.userId === currentUser.id) ||
         (currentUser.rollNo && paper.uploaderRollNo && currentUser.rollNo !== 'GUEST' && paper.uploaderRollNo.toUpperCase() === currentUser.rollNo.toUpperCase())
@@ -2185,13 +2216,24 @@
 
       return `
         <div class="bg-white rounded-2xl border border-slate-200 hover:border-brandBlue/50 shadow-sm hover:shadow-md transition duration-200 flex flex-col overflow-hidden group">
-          
+
           <!-- Top Card Meta -->
           <div class="p-5 flex-1 flex flex-col">
             <div class="flex items-start justify-between gap-2 mb-2">
-              <span class="px-2 py-0.5 rounded text-[11px] font-bold font-mono-code bg-slate-100 text-slate-800 border border-slate-200">
-                ${escapeHTML(paper.subjectCode)}
-              </span>
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="px-2 py-0.5 rounded text-[11px] font-bold font-mono-code bg-slate-100 text-slate-800 border border-slate-200">
+                  ${escapeHTML(paper.subjectCode)}
+                </span>
+                ${isPdf ? `
+                  <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-200 flex items-center gap-1 font-mono-code">
+                    <i class="fa-solid fa-file-pdf text-[10px]"></i> PDF
+                  </span>
+                ` : `
+                  <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-brandBlue border border-blue-200 flex items-center gap-1 font-mono-code">
+                    <i class="fa-solid fa-file-image text-[10px]"></i> IMG
+                  </span>
+                `}
+              </div>
               <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${examBadgeClass}">
                 ${escapeHTML(paper.examTypeLabel || paper.examType)}
               </span>
@@ -2230,10 +2272,10 @@
           <!-- Card Actions -->
           <div class="px-4 py-3 bg-slate-50 border-t border-slate-100 flex items-center space-x-2">
             <button type="button" onclick="openViewerModal('${escapeHTML(paper.id)}')" class="flex-1 py-2 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center justify-center space-x-1.5">
-              <i class="fa-solid fa-magnifying-glass text-xs"></i>
-              <span>View Full Paper</span>
+              <i class="${isPdf ? 'fa-solid fa-file-pdf' : 'fa-solid fa-magnifying-glass'} text-xs"></i>
+              <span>${isPdf ? 'View PDF Paper' : 'View Full Paper'}</span>
             </button>
-            <button type="button" onclick="handleCardDownload('${escapeHTML(paper.id)}', event)" class="p-2 bg-white hover:bg-blue-50 text-slate-700 hover:text-brandBlue border border-slate-300 rounded-xl transition" title="Direct Download Image">
+            <button type="button" onclick="handleCardDownload('${escapeHTML(paper.id)}', event)" class="p-2 bg-white hover:bg-blue-50 text-slate-700 hover:text-brandBlue border border-slate-300 rounded-xl transition" title="Direct Download Document">
               <i class="fa-solid fa-arrow-down text-xs"></i>
             </button>
             ${canDelete ? `
@@ -2295,7 +2337,18 @@
       await downloadFileFromUrl(url, filename);
     }
 
-    // Question Paper Image Viewer Controller
+    // Helper: Detect whether a URL points to a PDF document
+    function isPdfDocument(url) {
+      if (!url) return false;
+      const lower = String(url).toLowerCase();
+      if (lower.startsWith('data:application/pdf')) return true;
+      const clean = lower.split('?')[0].split('#')[0];
+      return clean.endsWith('.pdf') || lower.includes('.pdf?') || lower.includes('/pdf');
+    }
+
+    let currentViewerBlobUrl = null;
+
+    // Question Paper Document & Image Viewer Controller
     function openViewerModal(paperId) {
       const paper = papersList.find(p => p.id === paperId);
       if (!paper) return;
@@ -2311,9 +2364,77 @@
       document.getElementById('viewer-year').textContent = paper.academicYear || '2025-2026';
       document.getElementById('viewer-marks').textContent = `${paper.maxMarks || 30} Marks (${paper.duration || '90 Mins'})`;
 
+      const safeUrl = sanitizeUrl(paper.imageUrl);
+      const isPdf = isPdfDocument(safeUrl);
+
+      const imgContainer = document.getElementById('viewer-image-container');
+      const pdfContainer = document.getElementById('viewer-pdf-container');
+      const imageControls = document.getElementById('viewer-image-controls');
+      const pdfOpenBtn = document.getElementById('viewer-pdf-open-btn');
+      const pdfTabLink = document.getElementById('viewer-pdf-tab-link');
+      const pdfName = document.getElementById('viewer-pdf-name');
+      const pdfFrame = document.getElementById('viewer-pdf-frame');
       const viewerImg = document.getElementById('viewer-image');
-      viewerImg.src = sanitizeUrl(paper.imageUrl);
-      viewerImg.style.transform = 'scale(1) rotate(0deg)';
+      const formatBadge = document.getElementById('viewer-format-badge');
+
+      // Revoke any previous temporary blob URL to free memory
+      if (currentViewerBlobUrl) {
+        try { window.URL.revokeObjectURL(currentViewerBlobUrl); } catch(e) {}
+        currentViewerBlobUrl = null;
+      }
+
+      if (isPdf) {
+        // PDF DOCUMENT MODE (Native Browser PDF Engine via Frame)
+        if (imgContainer) imgContainer.style.display = 'none';
+        if (imageControls) imageControls.style.display = 'none';
+        if (viewerImg) viewerImg.src = '';
+
+        if (pdfContainer) pdfContainer.style.display = 'flex';
+        if (pdfOpenBtn) pdfOpenBtn.style.display = 'inline-flex';
+        if (formatBadge) {
+          formatBadge.textContent = 'PDF DOCUMENT';
+          formatBadge.className = 'px-1.5 py-0.5 rounded text-[10px] font-bold font-mono-code bg-red-100 text-red-700 border border-red-200';
+        }
+
+        let targetPdfUrl = safeUrl;
+        if (safeUrl.startsWith('data:application/pdf')) {
+          try {
+            const parts = safeUrl.split(',');
+            const byteCharacters = atob(parts[1]);
+            const byteNumbers = new Uint8Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+              byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const blob = new Blob([byteNumbers], { type: 'application/pdf' });
+            currentViewerBlobUrl = window.URL.createObjectURL(blob);
+            targetPdfUrl = currentViewerBlobUrl;
+          } catch(e) {}
+        }
+
+        const pdfViewerUrl = targetPdfUrl.includes('#') ? targetPdfUrl : `${targetPdfUrl}#toolbar=1&navpanes=0&view=FitH`;
+        if (pdfFrame) pdfFrame.src = pdfViewerUrl;
+        if (pdfOpenBtn) pdfOpenBtn.href = targetPdfUrl;
+        if (pdfTabLink) pdfTabLink.href = targetPdfUrl;
+        if (pdfName) {
+          pdfName.textContent = `${paper.subjectCode}_${paper.branch}_${paper.examType}.pdf`;
+        }
+      } else {
+        // HIGH-RESOLUTION IMAGE MODE
+        if (pdfContainer) pdfContainer.style.display = 'none';
+        if (pdfOpenBtn) pdfOpenBtn.style.display = 'none';
+        if (pdfFrame) pdfFrame.src = 'about:blank';
+        if (formatBadge) {
+          formatBadge.textContent = 'IMAGE';
+          formatBadge.className = 'px-1.5 py-0.5 rounded text-[10px] font-bold font-mono-code bg-blue-100 text-brandBlue border border-blue-200';
+        }
+
+        if (imageControls) imageControls.style.display = 'flex';
+        if (imgContainer) imgContainer.style.display = 'flex';
+        if (viewerImg) {
+          viewerImg.src = safeUrl;
+          viewerImg.style.transform = 'scale(1) rotate(0deg)';
+        }
+      }
 
       document.getElementById('viewer-modal').style.display = 'flex';
       document.body.classList.add('overflow-hidden');
@@ -2322,6 +2443,14 @@
     function closeViewerModal() {
       document.getElementById('viewer-modal').style.display = 'none';
       document.body.classList.remove('overflow-hidden');
+      const pdfFrame = document.getElementById('viewer-pdf-frame');
+      if (pdfFrame) pdfFrame.src = 'about:blank';
+      const viewerImg = document.getElementById('viewer-image');
+      if (viewerImg) viewerImg.src = '';
+      if (currentViewerBlobUrl) {
+        try { window.URL.revokeObjectURL(currentViewerBlobUrl); } catch(e) {}
+        currentViewerBlobUrl = null;
+      }
       activePaperInViewer = null;
     }
 
