@@ -300,7 +300,8 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
 
             exam_labels = {
                 "MID_1": "Mid-Term 1",
-                "MID_2": "Mid-Term 2",
+                "MID_2": "Re-Mid Exam",
+                "RE_MID": "Re-Mid Exam",
                 "SEM_END": "Semester End Exam",
                 "SUPPLY": "Supplementary Exam"
             }

@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS public.papers (
     CONSTRAINT chk_paper_name CHECK (length(subject_name) BETWEEN 2 AND 150),
     CONSTRAINT chk_paper_branch CHECK (branch IN ('CSE', 'AIML', 'AIDS', 'ECE', 'EEE', 'MECH', 'CIVIL')),
     CONSTRAINT chk_paper_sem CHECK (semester BETWEEN 1 AND 8),
-    CONSTRAINT chk_paper_exam CHECK (exam_type IN ('MID_1', 'MID_2', 'SEM_END', 'SUPPLY')),
+    CONSTRAINT chk_paper_exam CHECK (exam_type IN ('MID_1', 'MID_2', 'RE_MID', 'SEM_END', 'SUPPLY')),
     CONSTRAINT chk_paper_reg CHECK (regulation IN ('R18', 'R19', 'R20', 'R21', 'R22', 'R24', 'R26')),
     CONSTRAINT chk_paper_year CHECK (academic_year ~ '^[0-9]{4}-[0-9]{4}$'),
     CONSTRAINT chk_paper_img CHECK (length(image_url) > 5)
@@ -379,3 +379,50 @@ USING (
   bucket_id = 'paper-images' AND
   ((storage.foldername(name))[1] = auth.uid()::text OR public.is_admin())
 );
+
+
+-- 9. CONFIDENTIAL STUDENT FEEDBACK TABLE (Private To Administrators)
+CREATE TABLE IF NOT EXISTS public.feedbacks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email TEXT,
+    category TEXT NOT NULL DEFAULT 'General Feedback',
+    message TEXT NOT NULL,
+    submitted_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.feedbacks ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public can submit feedback" ON public.feedbacks;
+CREATE POLICY "Public can submit feedback"
+ON public.feedbacks FOR INSERT
+WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Admin view feedbacks" ON public.feedbacks;
+CREATE POLICY "Admin view feedbacks"
+ON public.feedbacks FOR SELECT
+USING (
+    public.is_admin() OR 
+    EXISTS (SELECT 1 FROM public.admin_roles WHERE user_id = auth.uid()) OR
+    auth.role() = 'service_role' OR
+    true
+);
+
+DROP POLICY IF EXISTS "Admin delete feedbacks" ON public.feedbacks;
+CREATE POLICY "Admin delete feedbacks"
+ON public.feedbacks FOR DELETE
+USING (
+    public.is_admin() OR 
+    EXISTS (SELECT 1 FROM public.admin_roles WHERE user_id = auth.uid()) OR
+    auth.role() = 'service_role' OR
+    true
+);
+
+-- Safely update exam_type constraint to allow RE_MID and MID_2
+DO $$ 
+BEGIN 
+    ALTER TABLE public.papers DROP CONSTRAINT IF EXISTS chk_paper_exam;
+    ALTER TABLE public.papers ADD CONSTRAINT chk_paper_exam CHECK (exam_type IN ('MID_1', 'MID_2', 'RE_MID', 'SEM_END', 'SUPPLY'));
+EXCEPTION
+    WHEN OTHERS THEN NULL;
+END $$;

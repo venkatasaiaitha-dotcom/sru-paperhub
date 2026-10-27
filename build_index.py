@@ -163,7 +163,70 @@ html_content = r'''<!DOCTYPE html>
           </button>
         </div>
 
+      </div>
+
+      <!-- Confidential Student Feedback Box (Only on Login Page - Strictly Private to Admins) -->
+      <div class="mt-5 bg-white p-5 shadow-sm border border-slate-200 rounded-2xl">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+          <div class="flex items-center space-x-2">
+            <div class="w-7 h-7 rounded-lg bg-blue-50 text-brandBlue flex items-center justify-center text-xs">
+              <i class="fa-solid fa-comment-dots"></i>
+            </div>
+            <div>
+              <h3 class="text-xs font-bold text-slate-800">Student Feedback &amp; Suggestions</h3>
+              <p class="text-[10px] text-slate-500">Confidential • Direct to Administration</p>
+            </div>
+          </div>
+          <span class="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+            <i class="fa-solid fa-shield-halved text-[9px]"></i> Private
+          </span>
         </div>
+
+        <form id="login-feedback-form" onsubmit="handleFeedbackSubmit(event)" class="space-y-3">
+          <!-- SRU Email / Roll Number (Optional) -->
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-700 mb-1">Your SRU Email / Roll No <span class="text-slate-400 font-normal">(Optional)</span></label>
+            <input id="fb-email" type="text" placeholder="e.g. 2103a51000@sru.edu.in (or leave blank for anonymous)" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+          </div>
+
+          <!-- Category -->
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-700 mb-1">Feedback Category *</label>
+            <select id="fb-category" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue font-medium">
+              <option value="General Feedback">💡 General Feedback &amp; Suggestions</option>
+              <option value="Missing Paper Request">📚 Request Missing Question Paper</option>
+              <option value="Report Paper Issue">⚠️ Report Incorrect Paper / Typo</option>
+              <option value="Bug Report">🐛 Website Bug or Technical Issue</option>
+              <option value="Other Inquiry">💬 Other Inquiry</option>
+            </select>
+          </div>
+
+          <!-- Message -->
+          <div>
+            <label class="block text-[11px] font-semibold text-slate-700 mb-1">Your Feedback / Suggestion *</label>
+            <textarea id="fb-message" rows="3" required placeholder="Type your feedback, request, or suggestion here... (strictly confidential, delivered directly to SRU PaperHub administrators)" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue resize-none"></textarea>
+          </div>
+
+          <!-- Feedback Submit Button -->
+          <button type="submit" id="fb-submit-btn" class="w-full py-2.5 px-4 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center space-x-1.5">
+            <i class="fa-solid fa-paper-plane text-xs"></i>
+            <span>Submit Confidential Feedback</span>
+          </button>
+
+          <!-- Success Alert Message -->
+          <div id="fb-success-box" style="display: none;" class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-semibold flex items-center space-x-2">
+            <i class="fa-solid fa-circle-check text-emerald-600 text-base flex-shrink-0"></i>
+            <div>
+              <p class="font-bold">Thank you for your feedback!</p>
+              <p class="text-[11px] text-emerald-700 font-normal">Your feedback has been securely submitted to the SRU PaperHub administrators.</p>
+            </div>
+          </div>
+
+          <p class="text-[10px] text-slate-400 text-center flex items-center justify-center gap-1">
+            <i class="fa-solid fa-lock text-slate-400"></i> Individual feedbacks are never shown to other users.
+          </p>
+        </form>
+      </div>
 
       <div class="mt-4 text-center">
         <p class="text-[11px] text-slate-400">SR University • Warangal, Telangana • Exam Portal</p>
@@ -309,9 +372,9 @@ html_content = r'''<!DOCTYPE html>
           <!-- Exam Type Filter -->
           <div>
             <select id="filter-exam-type" onchange="handleSearchFilter()" class="w-full bg-slate-50 border border-slate-300 rounded-xl py-2 px-3 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue font-medium">
-              <option value="ALL">All Exam Types (Mid-1, Mid-2, End Sem)</option>
+              <option value="ALL">All Exam Types (Mid-1, Re-Mid, End Sem)</option>
               <option value="MID_1">Mid-Term 1 (Mid-1)</option>
-              <option value="MID_2">Mid-Term 2 (Mid-2)</option>
+              <option value="MID_2">Re-Mid Exam (Re-Mid)</option>
               <option value="SEM_END">Semester End Exam</option>
               <option value="SUPPLY">Supplementary Exam</option>
             </select>
@@ -599,7 +662,7 @@ html_content = r'''<!DOCTYPE html>
             <label class="block text-xs font-semibold text-slate-700 mb-1">Examination Type *</label>
             <select id="up-exam-type" required onchange="checkRealtimeDuplicates()" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue">
               <option value="MID_1">Mid-Term 1 (Mid-1)</option>
-              <option value="MID_2">Mid-Term 2 (Mid-2)</option>
+              <option value="MID_2">Re-Mid Exam (Re-Mid)</option>
               <option value="SEM_END">Semester End Exam</option>
               <option value="SUPPLY">Supplementary Exam</option>
             </select>
@@ -621,8 +684,20 @@ html_content = r'''<!DOCTYPE html>
         <!-- Row 3: Subject Code & Academic Year -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs font-semibold text-slate-700 mb-1">Subject Code *</label>
-            <input id="up-subject-code" type="text" required oninput="checkRealtimeDuplicates()" placeholder="e.g. 22CS501" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono-code uppercase text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-xs font-semibold text-slate-700">Subject Code *</label>
+              <span id="up-code-status-pill" class="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                Official SRU Format
+              </span>
+            </div>
+            <div class="relative">
+              <input id="up-subject-code" type="text" required oninput="validateSubjectCodeLive(); checkRealtimeDuplicates();" onfocus="validateSubjectCodeLive()" placeholder="e.g. 25CAI102PC205 or 22CS501" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono-code uppercase text-slate-800 focus:outline-none focus:ring-2 focus:ring-brandBlue"/>
+            </div>
+            <!-- Live Validation Hint Message -->
+            <p id="up-subject-code-hint" class="text-[11px] mt-1.5 flex items-center gap-1.5 font-medium transition-colors duration-150 text-amber-600">
+              <i id="up-subject-code-icon" class="fa-solid fa-circle-exclamation text-xs text-amber-500"></i>
+              <span id="up-subject-code-msg">Enter correct subject code (e.g. <strong>25CAI102PC205</strong>, <strong>22CS501</strong>)</span>
+            </p>
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-700 mb-1">Academic Year *</label>
@@ -765,16 +840,21 @@ html_content = r'''<!DOCTYPE html>
         </div>
 
         <!-- Admin Workspace Tabs -->
-        <div class="flex border-b border-slate-200 text-xs font-bold space-x-4">
-          <button id="adm-tab-users-btn" onclick="setAdminWorkspaceTab('users')" class="pb-2.5 border-b-2 border-brandBlue text-brandBlue transition flex items-center space-x-1.5">
+        <div class="flex border-b border-slate-200 text-xs font-bold space-x-4 overflow-x-auto pb-0.5">
+          <button id="adm-tab-users-btn" onclick="setAdminWorkspaceTab('users')" class="pb-2.5 border-b-2 border-brandBlue text-brandBlue transition flex items-center space-x-1.5 whitespace-nowrap">
             <i class="fa-solid fa-users"></i>
             <span>User Logins &amp; Uploads</span>
           </button>
-          <button id="adm-tab-papers-btn" onclick="setAdminWorkspaceTab('papers')" class="pb-2.5 text-slate-400 hover:text-slate-700 transition flex items-center space-x-1.5">
+          <button id="adm-tab-papers-btn" onclick="setAdminWorkspaceTab('papers')" class="pb-2.5 text-slate-400 hover:text-slate-700 transition flex items-center space-x-1.5 whitespace-nowrap">
             <i class="fa-solid fa-file-shield"></i>
             <span>Paper Moderation</span>
           </button>
-          <button id="adm-tab-notice-btn" onclick="setAdminWorkspaceTab('notice')" class="pb-2.5 text-slate-400 hover:text-slate-700 transition flex items-center space-x-1.5">
+          <button id="adm-tab-feedback-btn" onclick="setAdminWorkspaceTab('feedback')" class="pb-2.5 text-slate-400 hover:text-slate-700 transition flex items-center space-x-1.5 whitespace-nowrap">
+            <i class="fa-solid fa-comments text-amber-500"></i>
+            <span>Student Feedbacks</span>
+            <span id="adm-feedback-badge" class="ml-1 px-1.5 py-0.2 rounded-full bg-blue-100 text-brandBlue text-[10px] font-bold">0</span>
+          </button>
+          <button id="adm-tab-notice-btn" onclick="setAdminWorkspaceTab('notice')" class="pb-2.5 text-slate-400 hover:text-slate-700 transition flex items-center space-x-1.5 whitespace-nowrap">
             <i class="fa-solid fa-bullhorn"></i>
             <span>Campus Notice &amp; Settings</span>
           </button>
@@ -854,6 +934,59 @@ html_content = r'''<!DOCTYPE html>
               </thead>
               <tbody id="adm-papers-tbody" class="divide-y divide-slate-100 text-slate-800">
                 <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB: CONFIDENTIAL STUDENT FEEDBACK WORKSPACE -->
+        <div id="adm-tab-feedback" style="display: none;" class="space-y-3.5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h4 class="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <i class="fa-solid fa-comments text-brandBlue"></i>
+                <span>Student Feedbacks &amp; Private Suggestions</span>
+              </h4>
+              <p class="text-[11px] text-slate-500">Confidential feedback submitted from the login portal. Visible exclusively to administrators.</p>
+            </div>
+            <div class="flex items-center space-x-2">
+              <input id="adm-feedback-search" type="text" placeholder="Search message, sender, or category..." oninput="filterAdminFeedbackTable(this.value)" class="px-2.5 py-1.5 bg-slate-50 border border-slate-300 rounded-lg text-xs w-48 sm:w-60 focus:outline-none focus:ring-1 focus:ring-brandBlue"/>
+              <button type="button" onclick="loadAdminFeedbacks()" class="p-1.5 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-600 text-xs" title="Refresh Feedbacks">
+                <i class="fa-solid fa-arrows-rotate"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Feedback Summary Badges -->
+          <div class="grid grid-cols-3 gap-3">
+            <div class="p-2.5 bg-blue-50/70 border border-blue-200 rounded-xl text-center">
+              <div id="adm-stat-feedback-total" class="text-base font-bold text-brandBlueDark">0</div>
+              <div class="text-[10px] text-slate-500 font-semibold">Total Feedbacks</div>
+            </div>
+            <div class="p-2.5 bg-indigo-50/70 border border-indigo-200 rounded-xl text-center">
+              <div id="adm-stat-feedback-requests" class="text-base font-bold text-indigo-900">0</div>
+              <div class="text-[10px] text-slate-500 font-semibold">Paper Requests</div>
+            </div>
+            <div class="p-2.5 bg-amber-50/70 border border-amber-200 rounded-xl text-center">
+              <div id="adm-stat-feedback-bugs" class="text-base font-bold text-amber-900">0</div>
+              <div class="text-[10px] text-slate-500 font-semibold">Issue / Bug Reports</div>
+            </div>
+          </div>
+
+          <!-- Feedbacks Table -->
+          <div class="overflow-x-auto border border-slate-200 rounded-xl max-h-80 overflow-y-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead class="bg-slate-50 sticky top-0 border-b border-slate-200 text-slate-700 font-semibold text-[11px]">
+                <tr>
+                  <th class="p-2.5">Date &amp; Time</th>
+                  <th class="p-2.5">Student / Sender</th>
+                  <th class="p-2.5">Category</th>
+                  <th class="p-2.5">Feedback Content</th>
+                  <th class="p-2.5 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="adm-feedbacks-tbody" class="divide-y divide-slate-100 text-slate-800">
+                <!-- Populated dynamically by renderAdminFeedbacksTab() -->
               </tbody>
             </table>
           </div>
@@ -1532,6 +1665,7 @@ html_content = r'''<!DOCTYPE html>
         document.getElementById('admin-notice-input').value = document.getElementById('announcement-text').textContent;
         setAdminWorkspaceTab('users');
         loadAdminAnalytics();
+        loadAdminFeedbacks();
       } else {
         document.getElementById('admin-login-box').style.display = 'block';
         document.getElementById('admin-controls-box').style.display = 'none';
@@ -1547,30 +1681,41 @@ html_content = r'''<!DOCTYPE html>
       const tabUsers = document.getElementById('adm-tab-users');
       const tabPapers = document.getElementById('adm-tab-papers');
       const tabNotice = document.getElementById('adm-tab-notice');
+      const tabFeedback = document.getElementById('adm-tab-feedback');
 
       const btnUsers = document.getElementById('adm-tab-users-btn');
       const btnPapers = document.getElementById('adm-tab-papers-btn');
       const btnNotice = document.getElementById('adm-tab-notice-btn');
+      const btnFeedback = document.getElementById('adm-tab-feedback-btn');
 
-      tabUsers.style.display = 'none';
-      tabPapers.style.display = 'none';
-      tabNotice.style.display = 'none';
+      if (tabUsers) tabUsers.style.display = 'none';
+      if (tabPapers) tabPapers.style.display = 'none';
+      if (tabNotice) tabNotice.style.display = 'none';
+      if (tabFeedback) tabFeedback.style.display = 'none';
 
-      btnUsers.className = "pb-2.5 text-slate-400 hover:text-slate-700 transition flex items-center space-x-1.5";
-      btnPapers.className = "pb-2.5 text-slate-400 hover:text-slate-700 transition flex items-center space-x-1.5";
-      btnNotice.className = "pb-2.5 text-slate-400 hover:text-slate-700 transition flex items-center space-x-1.5";
+      const inactiveClass = "pb-2.5 text-slate-400 hover:text-slate-700 transition flex items-center space-x-1.5 whitespace-nowrap";
+      const activeClass = "pb-2.5 border-b-2 border-brandBlue text-brandBlue transition flex items-center space-x-1.5 whitespace-nowrap font-bold";
+
+      if (btnUsers) btnUsers.className = inactiveClass;
+      if (btnPapers) btnPapers.className = inactiveClass;
+      if (btnNotice) btnNotice.className = inactiveClass;
+      if (btnFeedback) btnFeedback.className = inactiveClass;
 
       if (tab === 'users') {
-        tabUsers.style.display = 'block';
-        btnUsers.className = "pb-2.5 border-b-2 border-brandBlue text-brandBlue transition flex items-center space-x-1.5 font-bold";
+        if (tabUsers) tabUsers.style.display = 'block';
+        if (btnUsers) btnUsers.className = activeClass;
         renderAdminUsersTab();
       } else if (tab === 'papers') {
-        tabPapers.style.display = 'block';
-        btnPapers.className = "pb-2.5 border-b-2 border-brandBlue text-brandBlue transition flex items-center space-x-1.5 font-bold";
+        if (tabPapers) tabPapers.style.display = 'block';
+        if (btnPapers) btnPapers.className = activeClass;
         renderAdminPapersTab();
+      } else if (tab === 'feedback') {
+        if (tabFeedback) tabFeedback.style.display = 'block';
+        if (btnFeedback) btnFeedback.className = activeClass;
+        loadAdminFeedbacks();
       } else if (tab === 'notice') {
-        tabNotice.style.display = 'block';
-        btnNotice.className = "pb-2.5 border-b-2 border-brandBlue text-brandBlue transition flex items-center space-x-1.5 font-bold";
+        if (tabNotice) tabNotice.style.display = 'block';
+        if (btnNotice) btnNotice.className = activeClass;
       }
     }
 
@@ -2046,7 +2191,7 @@ html_content = r'''<!DOCTYPE html>
         branch: row.branch,
         semester: row.semester,
         examType: row.exam_type,
-        examTypeLabel: row.exam_type_label || (row.exam_type === 'MID_1' ? 'Mid-Term 1' : (row.exam_type === 'MID_2' ? 'Mid-Term 2' : 'Semester End')),
+        examTypeLabel: row.exam_type_label || (row.exam_type === 'MID_1' ? 'Mid-Term 1' : ((row.exam_type === 'MID_2' || row.exam_type === 'RE_MID') ? 'Re-Mid Exam' : 'Semester End')),
         regulation: row.regulation,
         academicYear: row.academic_year,
         duration: row.duration,
@@ -2170,8 +2315,12 @@ html_content = r'''<!DOCTYPE html>
           return false;
         }
         // Exam Type Filter
-        if (examFilter !== 'ALL' && paper.examType !== examFilter) {
-          return false;
+        if (examFilter !== 'ALL') {
+          if (examFilter === 'MID_2' || examFilter === 'RE_MID') {
+            if (paper.examType !== 'MID_2' && paper.examType !== 'RE_MID') return false;
+          } else if (paper.examType !== examFilter) {
+            return false;
+          }
         }
         // Regulation Filter
         if (regFilter !== 'ALL' && paper.regulation !== regFilter) {
@@ -2210,6 +2359,7 @@ html_content = r'''<!DOCTYPE html>
       const examColors = {
         'MID_1': 'bg-blue-50 text-blue-700 border-blue-200',
         'MID_2': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+        'RE_MID': 'bg-indigo-50 text-indigo-700 border-indigo-200',
         'SEM_END': 'bg-purple-50 text-purple-700 border-purple-200',
         'SUPPLY': 'bg-amber-50 text-amber-700 border-amber-200'
       };
@@ -2241,7 +2391,7 @@ html_content = r'''<!DOCTYPE html>
                 `}
               </div>
               <span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${examBadgeClass}">
-                ${escapeHTML(paper.examTypeLabel || paper.examType)}
+                ${escapeHTML((paper.examType === 'MID_2' || paper.examType === 'RE_MID') ? 'Re-Mid Exam' : (paper.examTypeLabel || paper.examType))}
               </span>
             </div>
 
@@ -2502,6 +2652,298 @@ html_content = r'''<!DOCTYPE html>
       }
     }
 
+    // ================= LIVE SUBJECT CODE VALIDATION =================
+    function validateSubjectCodeLive() {
+      const codeInput = document.getElementById('up-subject-code');
+      const hint = document.getElementById('up-subject-code-hint');
+      const icon = document.getElementById('up-subject-code-icon');
+      const msg = document.getElementById('up-subject-code-msg');
+      const statusPill = document.getElementById('up-code-status-pill');
+      if (!codeInput || !hint || !icon || !msg) return false;
+
+      const rawVal = codeInput.value;
+      const val = rawVal.trim().toUpperCase();
+
+      // Official SRU Subject Code format:
+      // Examples: 25CAI102PC205, 22CS501, 21CS101, 20EC301, 22ME402, CS301, 23AI101
+      // Starts with letters or digits, alphanumeric only, between 4 and 18 chars, contains at least one letter and at least one digit
+      const validChars = /^[A-Z0-9]+$/;
+      const hasLettersAndDigits = /[A-Z]/.test(val) && /[0-9]/.test(val);
+      const isLengthValid = val.length >= 4 && val.length <= 18;
+
+      if (!val) {
+        hint.className = 'text-[11px] mt-1.5 flex items-center gap-1.5 font-medium transition-colors duration-150 text-amber-600';
+        icon.className = 'fa-solid fa-circle-exclamation text-xs text-amber-500';
+        msg.innerHTML = 'Enter correct subject code (e.g. <strong>25CAI102PC205</strong>, <strong>22CS501</strong>)';
+        if (statusPill) {
+          statusPill.className = 'text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200';
+          statusPill.textContent = 'Required';
+        }
+        codeInput.classList.remove('border-emerald-500', 'focus:ring-emerald-400', 'border-rose-400');
+        codeInput.classList.add('border-slate-300');
+        return false;
+      } else if (!validChars.test(val) || !hasLettersAndDigits || !isLengthValid) {
+        hint.className = 'text-[11px] mt-1.5 flex items-center gap-1.5 font-medium transition-colors duration-150 text-rose-600';
+        icon.className = 'fa-solid fa-triangle-exclamation text-xs text-rose-500';
+        msg.innerHTML = 'Enter correct subject code (e.g. <strong>25CAI102PC205</strong>, <strong>22CS501</strong>)';
+        if (statusPill) {
+          statusPill.className = 'text-[10px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200';
+          statusPill.textContent = 'Invalid Code';
+        }
+        codeInput.classList.remove('border-emerald-500', 'focus:ring-emerald-400', 'border-slate-300');
+        codeInput.classList.add('border-rose-400');
+        return false;
+      } else {
+        hint.className = 'text-[11px] mt-1.5 flex items-center gap-1.5 font-medium transition-colors duration-150 text-emerald-600';
+        icon.className = 'fa-solid fa-circle-check text-xs text-emerald-500';
+        msg.innerHTML = `Subject code verified: <strong class="font-mono-code font-bold tracking-wide">${escapeHTML(val)}</strong>`;
+        if (statusPill) {
+          statusPill.className = 'text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200';
+          statusPill.textContent = 'Valid Code';
+        }
+        codeInput.classList.remove('border-slate-300', 'border-rose-400');
+        codeInput.classList.add('border-emerald-500', 'focus:ring-emerald-400');
+        return true;
+      }
+    }
+
+    // ================= CONFIDENTIAL STUDENT FEEDBACK SYSTEM =================
+    let adminFeedbacksList = [];
+
+    // Handle Feedback Submission on Login Page
+    async function handleFeedbackSubmit(event) {
+      event.preventDefault();
+      const emailInput = document.getElementById('fb-email');
+      const catSelect = document.getElementById('fb-category');
+      const msgInput = document.getElementById('fb-message');
+      const submitBtn = document.getElementById('fb-submit-btn');
+      const successBox = document.getElementById('fb-success-box');
+
+      const message = (msgInput ? msgInput.value : '').trim();
+      if (!message || message.length < 3) {
+        showToast('Please enter your feedback message (at least 3 characters).', 'warning');
+        if (msgInput) msgInput.focus();
+        return;
+      }
+
+      let email = (emailInput ? emailInput.value : '').trim();
+      if (!email) {
+        const loginEmail = document.getElementById('login-email')?.value.trim();
+        email = loginEmail || 'Anonymous Student';
+      }
+      const category = (catSelect ? catSelect.value : 'General Feedback');
+
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> <span>Submitting Feedback...</span>';
+      }
+
+      const feedbackItem = {
+        id: 'fb_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+        email: email,
+        category: category,
+        message: message,
+        submitted_at: new Date().toISOString()
+      };
+
+      // 1. Save to local storage cache (confidential: never displayed on public pages)
+      try {
+        let stored = [];
+        try { stored = JSON.parse(localStorage.getItem('sru_feedbacks') || '[]'); } catch(e) { stored = []; }
+        stored.unshift(feedbackItem);
+        localStorage.setItem('sru_feedbacks', JSON.stringify(stored));
+      } catch(e) {
+        console.warn('Local storage feedback write error:', e);
+      }
+
+      // 2. Cloud Supabase Insertion
+      if (supabaseClient) {
+        try {
+          await supabaseClient.from('feedbacks').insert([{
+            email: feedbackItem.email,
+            category: feedbackItem.category,
+            message: feedbackItem.message,
+            submitted_at: feedbackItem.submitted_at
+          }]);
+        } catch(e) {
+          console.warn('Supabase feedback insert note:', e);
+        }
+      }
+
+      // 3. Clear message and display confirmation banner
+      if (msgInput) msgInput.value = '';
+      if (successBox) {
+        successBox.style.display = 'flex';
+        setTimeout(() => {
+          if (successBox) successBox.style.display = 'none';
+        }, 6000);
+      }
+
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane text-xs"></i> <span>Submit Confidential Feedback</span>';
+      }
+
+      showToast('Thank you! Your feedback has been securely submitted to administrators.', 'success');
+      
+      // If admin panel is currently open, refresh feedbacks list
+      if (isAdmin) {
+        loadAdminFeedbacks();
+      }
+    }
+
+    // Load All Feedbacks into Admin Portal
+    async function loadAdminFeedbacks() {
+      if (!isAdmin) return;
+      let cloudFeedbacks = [];
+      if (supabaseClient) {
+        try {
+          const { data, error } = await supabaseClient
+            .from('feedbacks')
+            .select('*')
+            .order('submitted_at', { ascending: false });
+          if (!error && Array.isArray(data)) {
+            cloudFeedbacks = data;
+          }
+        } catch(e) {
+          console.warn('Cloud feedbacks fetch notice:', e);
+        }
+      }
+
+      let localFeedbacks = [];
+      try {
+        localFeedbacks = JSON.parse(localStorage.getItem('sru_feedbacks') || '[]');
+      } catch(e) { localFeedbacks = []; }
+
+      // Merge cloud and local deduplicating
+      const map = new Map();
+      [...cloudFeedbacks, ...localFeedbacks].forEach(fb => {
+        const key = fb.id || `${fb.submitted_at}_${fb.message}`;
+        if (!map.has(key)) {
+          map.set(key, {
+            id: fb.id || key,
+            email: fb.email || 'Anonymous Student',
+            category: fb.category || 'General Feedback',
+            message: fb.message || '',
+            submitted_at: fb.submitted_at || fb.created_at || new Date().toISOString()
+          });
+        }
+      });
+
+      adminFeedbacksList = Array.from(map.values()).sort((a,b) => new Date(b.submitted_at) - new Date(a.submitted_at));
+
+      // Update badge
+      const badge = document.getElementById('adm-feedback-badge');
+      if (badge) badge.textContent = adminFeedbacksList.length;
+
+      renderAdminFeedbacksTab(adminFeedbacksList);
+    }
+
+    // Render Admin Feedbacks Table
+    function renderAdminFeedbacksTab(feedbacks) {
+      const tbody = document.getElementById('adm-feedbacks-tbody');
+      const statTotal = document.getElementById('adm-stat-feedback-total');
+      const statReqs = document.getElementById('adm-stat-feedback-requests');
+      const statBugs = document.getElementById('adm-stat-feedback-bugs');
+      if (!tbody) return;
+
+      const list = Array.isArray(feedbacks) ? feedbacks : adminFeedbacksList;
+
+      if (statTotal) statTotal.textContent = adminFeedbacksList.length;
+      if (statReqs) statReqs.textContent = adminFeedbacksList.filter(f => (f.category || '').toLowerCase().includes('request') || (f.category || '').toLowerCase().includes('missing')).length;
+      if (statBugs) statBugs.textContent = adminFeedbacksList.filter(f => (f.category || '').toLowerCase().includes('bug') || (f.category || '').toLowerCase().includes('issue')).length;
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400 font-medium">No student feedback submitted yet.</td></tr>`;
+        return;
+      }
+
+      const catBadges = {
+        'General Feedback': 'bg-blue-50 text-brandBlue border-blue-200',
+        'Missing Paper Request': 'bg-purple-50 text-purple-700 border-purple-200',
+        'Report Paper Issue': 'bg-amber-50 text-amber-700 border-amber-200',
+        'Bug Report': 'bg-red-50 text-red-700 border-red-200',
+        'Other Inquiry': 'bg-slate-50 text-slate-700 border-slate-200'
+      };
+
+      tbody.innerHTML = list.map(fb => {
+        const badgeClass = catBadges[fb.category] || 'bg-slate-50 text-slate-700 border-slate-200';
+        let formattedDate = 'Recent';
+        try {
+          formattedDate = new Date(fb.submitted_at).toLocaleString('en-US', {
+            month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true
+          });
+        } catch(e) {}
+
+        return `
+          <tr class="hover:bg-slate-50/80 transition">
+            <td class="p-2.5 whitespace-nowrap text-[11px] text-slate-500 font-medium">
+              <i class="fa-regular fa-clock mr-1 text-slate-400"></i> ${escapeHTML(formattedDate)}
+            </td>
+            <td class="p-2.5">
+              <div class="font-bold text-slate-800 text-xs">${escapeHTML(fb.email)}</div>
+            </td>
+            <td class="p-2.5">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold border ${badgeClass} whitespace-nowrap">
+                ${escapeHTML(fb.category)}
+              </span>
+            </td>
+            <td class="p-2.5 text-xs text-slate-700 max-w-sm">
+              <div class="whitespace-pre-line leading-relaxed">${escapeHTML(fb.message)}</div>
+            </td>
+            <td class="p-2.5 text-right whitespace-nowrap">
+              <button type="button" onclick="deleteAdminFeedback('${escapeHTML(fb.id)}')" class="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition" title="Delete Feedback">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Filter Admin Feedbacks by Search Query
+    function filterAdminFeedbackTable(query) {
+      const q = (query || '').toLowerCase().trim();
+      if (!q) {
+        renderAdminFeedbacksTab(adminFeedbacksList);
+        return;
+      }
+      const filtered = adminFeedbacksList.filter(fb => 
+        (fb.email || '').toLowerCase().includes(q) ||
+        (fb.category || '').toLowerCase().includes(q) ||
+        (fb.message || '').toLowerCase().includes(q)
+      );
+      renderAdminFeedbacksTab(filtered);
+    }
+
+    // Delete Feedback by Admin
+    async function deleteAdminFeedback(id) {
+      if (!confirm('Are you sure you want to delete this feedback message?')) return;
+
+      // 1. Remove from local storage
+      try {
+        let stored = [];
+        try { stored = JSON.parse(localStorage.getItem('sru_feedbacks') || '[]'); } catch(e) { stored = []; }
+        stored = stored.filter(f => f.id !== id && f.id !== `${id}`);
+        localStorage.setItem('sru_feedbacks', JSON.stringify(stored));
+      } catch(e) {}
+
+      // 2. Remove from Supabase
+      if (supabaseClient) {
+        try {
+          await supabaseClient.from('feedbacks').delete().eq('id', id);
+        } catch(e) {
+          console.warn('Supabase feedback delete notice:', e);
+        }
+      }
+
+      adminFeedbacksList = adminFeedbacksList.filter(f => f.id !== id && f.id !== `${id}`);
+      renderAdminFeedbacksTab(adminFeedbacksList);
+      const badge = document.getElementById('adm-feedback-badge');
+      if (badge) badge.textContent = adminFeedbacksList.length;
+      showToast('Feedback deleted successfully.', 'info');
+    }
+
     // ================= DUPLICATE DETECTION & AI OCR ENGINE =================
 
     // Realtime Metadata Duplicate Checking
@@ -2531,14 +2973,16 @@ html_content = r'''<!DOCTYPE html>
         return null;
       }
 
-      // 1. Check Exact Subject Code + Branch + Semester + Exam Type + Academic Year
-      const exactMatch = papersList.find(p => 
-        (p.subjectCode || '').toUpperCase() === code &&
-        p.branch === branch &&
-        p.semester.toString() === sem.toString() &&
-        p.examType === exam &&
-        p.academicYear === year
-      );
+      // 1. Check Exact Subject Code + Branch + Semester + Exam Type + Academic Year (MID_2 and RE_MID equated)
+      const exactMatch = papersList.find(p => {
+        const isExamMatch = (p.examType === exam) || 
+          ((exam === 'MID_2' || exam === 'RE_MID') && (p.examType === 'MID_2' || p.examType === 'RE_MID'));
+        return (p.subjectCode || '').toUpperCase() === code &&
+          p.branch === branch &&
+          p.semester.toString() === sem.toString() &&
+          isExamMatch &&
+          p.academicYear === year;
+      });
 
       if (exactMatch) {
         matchedDuplicatePaper = exactMatch;
@@ -2556,11 +3000,13 @@ html_content = r'''<!DOCTYPE html>
       }
 
       // 2. Check Subject Code + Exam Type + Academic Year
-      const partialMatch = papersList.find(p => 
-        (p.subjectCode || '').toUpperCase() === code &&
-        p.academicYear === year &&
-        p.examType === exam
-      );
+      const partialMatch = papersList.find(p => {
+        const isExamMatch = (p.examType === exam) || 
+          ((exam === 'MID_2' || exam === 'RE_MID') && (p.examType === 'MID_2' || p.examType === 'RE_MID'));
+        return (p.subjectCode || '').toUpperCase() === code &&
+          p.academicYear === year &&
+          isExamMatch;
+      });
 
       if (partialMatch) {
         matchedDuplicatePaper = partialMatch;
@@ -2728,6 +3174,7 @@ html_content = r'''<!DOCTYPE html>
       clearSelectedImage();
       document.getElementById('upload-modal').style.display = 'flex';
       document.body.classList.add('overflow-hidden');
+      validateSubjectCodeLive();
       checkRealtimeDuplicates();
     }
 
@@ -2904,6 +3351,12 @@ html_content = r'''<!DOCTYPE html>
     async function handlePaperUploadSubmit(event) {
       event.preventDefault();
 
+      if (!validateSubjectCodeLive()) {
+        alert('Please enter a correct official SRU subject code (e.g. 25CAI102PC205 or 22CS501).');
+        document.getElementById('up-subject-code').focus();
+        return;
+      }
+
       if (!selectedImageBase64) {
         document.getElementById('upload-image-error').style.display = 'block';
         return;
@@ -2964,14 +3417,21 @@ html_content = r'''<!DOCTYPE html>
       // 2. Realtime Database Duplicate Check (Query Supabase cloud table)
       if (supabaseClient) {
         try {
-          const { data: dbDups, error: dupQueryErr } = await supabaseClient
+          let dupQuery = supabaseClient
             .from('papers')
             .select('*')
             .ilike('subject_code', code)
             .eq('branch', branch)
             .eq('semester', sem)
-            .eq('exam_type', exam)
             .eq('academic_year', year);
+
+          if (exam === 'MID_2' || exam === 'RE_MID') {
+            dupQuery = dupQuery.in('exam_type', ['MID_2', 'RE_MID']);
+          } else {
+            dupQuery = dupQuery.eq('exam_type', exam);
+          }
+
+          const { data: dbDups, error: dupQueryErr } = await dupQuery;
 
           if (!dupQueryErr && Array.isArray(dbDups) && dbDups.length > 0) {
             const existingDb = dbDups[0];
@@ -3022,7 +3482,8 @@ html_content = r'''<!DOCTYPE html>
       const paperId = `sru_${branch.toLowerCase()}_${code.toLowerCase()}_${Date.now()}`;
       const examLabels = {
         'MID_1': 'Mid-Term 1',
-        'MID_2': 'Mid-Term 2',
+        'MID_2': 'Re-Mid Exam',
+        'RE_MID': 'Re-Mid Exam',
         'SEM_END': 'Semester End Exam',
         'SUPPLY': 'Supplementary Exam'
       };
