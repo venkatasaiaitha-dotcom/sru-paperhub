@@ -104,6 +104,19 @@ BEGIN
     END IF;
 END $$;
 
+-- Ensure identical question papers cannot be inserted twice (duplicate prevention)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'uq_paper_identity'
+    ) THEN
+        ALTER TABLE public.papers
+        ADD CONSTRAINT uq_paper_identity UNIQUE (subject_code, branch, semester, exam_type, academic_year);
+    END IF;
+EXCEPTION
+    WHEN others THEN NULL;
+END $$;
+
 -- 4. CREATE ANNOUNCEMENTS TABLE
 CREATE TABLE IF NOT EXISTS public.announcements (
     id SERIAL PRIMARY KEY,
