@@ -228,8 +228,16 @@ html_content = r'''<!DOCTYPE html>
         </form>
       </div>
 
-      <div class="mt-4 text-center">
+      <div class="mt-4 text-center space-y-1.5">
         <p class="text-[11px] text-slate-400">SR University • Warangal, Telangana • Exam Portal</p>
+        <p class="text-[11px] text-slate-600 flex items-center justify-center gap-1.5 flex-wrap">
+          <span>Developed by <strong class="font-bold text-slate-800">AITHA VENKATA SAI</strong></span>
+          <span class="text-slate-300">•</span>
+          <a href="https://www.linkedin.com/in/aitha-venkata-sai-3b128736b?utm_source=share_via&amp;utm_content=profile&amp;utm_medium=member_android" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-[#0A66C2] hover:text-blue-800 font-semibold transition hover:underline" title="LinkedIn Profile">
+            <i class="fa-brands fa-linkedin text-xs text-[#0A66C2]"></i>
+            <span>LinkedIn Profile</span>
+          </a>
+        </p>
       </div>
     </div>
   </div>
@@ -479,14 +487,25 @@ html_content = r'''<!DOCTYPE html>
 
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 mt-auto py-6">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
         <div class="flex items-center space-x-2">
           <span class="font-bold text-slate-700">SR University PaperHub</span>
           <span>•</span>
           <span>School of Computer Science &amp; AI &amp; School of Engineering</span>
         </div>
+        
+        <!-- Developer Credit & LinkedIn Profile -->
+        <div class="flex items-center space-x-2 text-slate-600 bg-slate-50 px-3.5 py-1.5 rounded-full border border-slate-200 shadow-sm">
+          <span>Developed by <strong class="font-bold text-slate-900">AITHA VENKATA SAI</strong></span>
+          <span class="text-slate-300">•</span>
+          <a href="https://www.linkedin.com/in/aitha-venkata-sai-3b128736b?utm_source=share_via&amp;utm_content=profile&amp;utm_medium=member_android" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-[#0A66C2] hover:text-blue-800 font-semibold transition hover:underline" title="LinkedIn Profile">
+            <i class="fa-brands fa-linkedin text-sm text-[#0A66C2]"></i>
+            <span>LinkedIn Profile</span>
+          </a>
+        </div>
+
         <div>
-          <span>Security Hardened Academic Archive • Supabase PostgreSQL &amp; Storage</span>
+          <span>Security Hardened Academic Archive • Supabase PostgreSQL</span>
         </div>
       </div>
     </footer>

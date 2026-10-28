@@ -63,6 +63,13 @@ Drag and drop the `public` folder onto [app.netlify.com/drop](https://app.netlif
 
 ---
 
+## Developer
+
+**Developed by**: [AITHA VENKATA SAI](https://www.linkedin.com/in/aitha-venkata-sai-3b128736b?utm_source=share_via&utm_content=profile&utm_medium=member_android)  
+Connect on [LinkedIn](https://www.linkedin.com/in/aitha-venkata-sai-3b128736b?utm_source=share_via&utm_content=profile&utm_medium=member_android)
+
+---
+
 ## License
 
 MIT License — Created for the student community of SR University, Warangal.
