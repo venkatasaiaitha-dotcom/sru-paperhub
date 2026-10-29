@@ -2301,8 +2301,8 @@
     }
 
     function mapPaperRow(row) {
-      // Grandfather legacy papers without explicit is_approved flag as approved
-      const isApproved = (row.is_approved !== false && row.status !== 'pending');
+      // Grandfather existing legacy papers without explicit is_approved flag as approved
+      const isApproved = (row.is_approved === true || row.is_approved === undefined || row.is_approved === null) && row.status !== 'pending';
       return {
         id: row.id,
         userId: row.user_id,
@@ -2338,15 +2338,22 @@
       const key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRjamhzemdjbGprcnZqZGxud2hoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA5OTg4NjAsImV4cCI6MjEwNjU3NDg2MH0.jg8nPJueBUJmbv7KyQynyyVgmTsRWUC-ivu0L7sJdb4';
       let fetched = false;
 
-      // Channel 1: Supabase JS Client SDK
+      // Channel 1: Supabase JS Client SDK (Resilient Query with Legacy Fallback)
       if (supabaseClient) {
         try {
           let query = supabaseClient.from('papers').select('*').order('created_at', { ascending: false });
-          // Public users only see approved papers from cloud
           if (!isAdmin) {
             query = query.or('is_approved.eq.true,status.eq.approved,status.is.null');
           }
-          const { data, error } = await query;
+          let { data, error } = await query;
+
+          // If is_approved column doesn't exist yet in Supabase, gracefully fallback to select('*')
+          if (error && (error.code === '42703' || (error.message && error.message.includes('is_approved')))) {
+            console.warn('is_approved column not found in database, retrieving existing archive papers:', error.message);
+            const fallbackRes = await supabaseClient.from('papers').select('*').order('created_at', { ascending: false });
+            data = fallbackRes.data;
+            error = fallbackRes.error;
+          }
 
           if (!error && Array.isArray(data)) {
             papersList = data.map(mapPaperRow);
@@ -2357,17 +2364,29 @@
         }
       }
 
-      // Channel 2: Direct REST fetch fallback
+      // Channel 2: Direct REST fetch fallback (Resilient)
       if (!fetched) {
         try {
           const filterParam = !isAdmin ? '&or=(is_approved.eq.true,status.eq.approved,status.is.null)' : '';
-          const resp = await fetch(`${url}/rest/v1/papers?select=*${filterParam}&order=created_at.desc`, {
+          let resp = await fetch(`${url}/rest/v1/papers?select=*${filterParam}&order=created_at.desc`, {
             headers: {
               'apikey': key,
               'Authorization': `Bearer ${key}`,
               'Content-Type': 'application/json'
             }
           });
+
+          // If filtered REST fails with 400 (e.g. column not yet created), fetch without filter
+          if (!resp.ok && filterParam) {
+            resp = await fetch(`${url}/rest/v1/papers?select=*&order=created_at.desc`, {
+              headers: {
+                'apikey': key,
+                'Authorization': `Bearer ${key}`,
+                'Content-Type': 'application/json'
+              }
+            });
+          }
+
           if (resp.ok) {
             const data = await resp.json();
             if (Array.isArray(data)) {
@@ -3770,8 +3789,8 @@
             cloudErrorDetail += `Storage: ${storageErr.message || JSON.stringify(storageErr)}. `;
           }
 
-          // Insert into Supabase 'papers' table with is_approved: false and status: 'pending'
-          const { error: dbErr } = await supabaseClient.from('papers').insert({
+          // Insert into Supabase 'papers' table with moderation metadata
+          let insertPayload = {
             id: paperId,
             user_id: null,
             subject_code: code,
@@ -3793,7 +3812,35 @@
             extracted_text: extractedOcrText || null,
             ocr_confidence: ocrConfidence || 0,
             download_count: 0
-          });
+          };
+
+          let { error: dbErr } = await supabaseClient.from('papers').insert(insertPayload);
+
+          // Graceful fallback: If Supabase table does not yet have is_approved/status/uploader_email columns
+          if (dbErr && (dbErr.code === '42703' || (dbErr.message && (dbErr.message.includes('is_approved') || dbErr.message.includes('status') || dbErr.message.includes('uploader_email'))))) {
+            console.warn('Database schema columns pending, inserting standard paper record:', dbErr.message);
+            const standardPayload = {
+              id: paperId,
+              subject_code: code,
+              subject_name: name,
+              branch: branch,
+              semester: sem,
+              exam_type: exam,
+              exam_type_label: examLabels[exam] || exam,
+              regulation: reg,
+              academic_year: year,
+              duration: exam.includes('MID') ? '90 Mins' : '3 Hours',
+              max_marks: exam.includes('MID') ? 30 : 60,
+              uploader_name: contributorName,
+              uploader_roll: contributorRoll,
+              image_url: uploadedImageUrl || selectedImageBase64,
+              extracted_text: extractedOcrText || null,
+              ocr_confidence: ocrConfidence || 0,
+              download_count: 0
+            };
+            const retryRes = await supabaseClient.from('papers').insert(standardPayload);
+            dbErr = retryRes.error;
+          }
 
           if (!dbErr) {
             cloudSaved = true;
