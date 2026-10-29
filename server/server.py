@@ -16,9 +16,41 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 DATA_FILE = os.path.join(DATA_DIR, "initial_papers.json")
 ANNOUNCEMENT_FILE = os.path.join(DATA_DIR, "announcement.json")
 UPLOAD_DIR = os.path.join(PUBLIC_DIR, "uploads")
+FEEDBACK_FILE = os.path.join(DATA_DIR, "feedbacks.json")
 
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Rate limiting data structures (in-memory per IP)
+UPLOAD_RATE_LIMITS = {}
+FEEDBACK_RATE_LIMITS = {}
+
+def check_rate_limit(ip, store, max_requests=5, window_sec=600):
+    now = time.time()
+    timestamps = store.get(ip, [])
+    timestamps = [t for t in timestamps if (now - t) < window_sec]
+    if len(timestamps) >= max_requests:
+        store[ip] = timestamps
+        return False, int(window_sec - (now - timestamps[0]))
+    timestamps.append(now)
+    store[ip] = timestamps
+    return True, 0
+
+def load_feedbacks():
+    try:
+        if os.path.exists(FEEDBACK_FILE):
+            with open(FEEDBACK_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+    except Exception:
+        pass
+    return []
+
+def save_feedbacks(feedbacks):
+    try:
+        with open(FEEDBACK_FILE, "w", encoding="utf-8") as f:
+            json.dump(feedbacks, f, indent=2)
+    except Exception as e:
+        print("Error saving feedbacks:", e)
 
 # Admin password must be provided via environment variable
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
@@ -149,7 +181,8 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
             reg = query.get("regulation", ["ALL"])[0]
             q = query.get("query", [""])[0].lower()
 
-            res = papers
+            # Public archive only returns approved papers
+            res = [p for p in papers if p.get("is_approved") is not False and p.get("status") != "pending"]
             if branch != "ALL":
                 res = [p for p in res if p.get("branch", "").upper() == branch.upper()]
             if exam != "ALL":
@@ -159,6 +192,11 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
             if q:
                 res = [p for p in res if q in p.get("subjectName", "").lower() or q in p.get("subjectCode", "").lower()]
             self._send_json(res)
+            return
+
+        elif path == "/api/admin/papers":
+            # Admin endpoint to list all papers (including pending)
+            self._send_json(load_papers())
             return
 
         elif path.startswith("/api/papers/"):
@@ -263,18 +301,30 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({"success": True, "announcement": text})
             return
 
-        # Paper Upload (Local Fallback Server)
+        # Paper Upload (Public Submission - Enters Pending Review)
         elif path == "/api/upload":
-            code = data.get("subjectCode", "SUB101").upper()
-            name = data.get("subjectName", "Untitled Subject")
+            client_ip = self.client_address[0]
+            allowed, wait_sec = check_rate_limit(client_ip, UPLOAD_RATE_LIMITS, max_requests=5, window_sec=600)
+            if not allowed:
+                self._send_json({"success": False, "error": f"Rate limit reached. Please wait {wait_sec} seconds before uploading."}, status=429)
+                return
+
+            code = data.get("subjectCode", "SUB101").upper().strip()
+            name = data.get("subjectName", "Untitled Subject").strip()
             branch = data.get("branch", "CSE")
             sem = int(data.get("semester", 1))
             exam = data.get("examType", "MID_1")
             reg = data.get("regulation", "R22")
             year = data.get("academicYear", "2025-2026")
-            uploader_name = data.get("uploaderName", "Student")
-            uploader_roll = data.get("uploaderRollNo", "SRU")
+            uploader_name = data.get("uploaderName", "Student Contributor")
+            uploader_roll = data.get("uploaderRollNo", "Anonymous")
+            uploader_email = data.get("uploaderEmail", "")
             image_data = data.get("imageData", "")
+
+            # File size limit: 15MB
+            if len(image_data) * 0.75 > 15 * 1024 * 1024:
+                self._send_json({"success": False, "error": "File size exceeds maximum 15MB limit."}, status=413)
+                return
 
             # Strict file validation - NO SVG, NO executables
             image_url = ""
@@ -322,17 +372,82 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
                 "school": "School of Computer Science & AI" if branch in ["CSE", "AIML", "AIDS"] else "School of Engineering",
                 "uploaderName": uploader_name,
                 "uploaderRollNo": uploader_roll,
+                "uploaderEmail": uploader_email,
                 "uploadDate": "Just now",
                 "imageUrl": image_url,
-                "downloadCount": 1
+                "downloadCount": 0,
+                "is_approved": False,
+                "status": "pending",
+                "created_at": int(time.time())
             }
 
             papers = load_papers()
             papers.insert(0, new_paper)
             save_papers(papers)
 
-            print(f"Successfully saved new paper: {code} - {name} ({branch}). Total papers: {len(papers)}")
-            self._send_json({"success": True, "paper": new_paper})
+            print(f"Successfully saved new submission (pending review): {code} - {name} ({branch}).")
+            self._send_json({
+                "success": True, 
+                "message": "Your question paper has been submitted successfully and is awaiting review.",
+                "paper": new_paper
+            })
+            return
+
+        # Admin Approve Paper
+        elif path == "/api/admin/approve":
+            password = data.get("password", "")
+            if not password or password != ADMIN_PASSWORD:
+                self._send_json({"success": False, "error": "Unauthorized"}, status=401)
+                return
+
+            paper_id = data.get("paperId", "")
+            papers = load_papers()
+            target_paper = next((p for p in papers if p.get("id") == paper_id), None)
+            if target_paper:
+                target_paper["is_approved"] = True
+                target_paper["status"] = "approved"
+                save_papers(papers)
+                self._send_json({"success": True, "message": "Paper approved successfully", "paper": target_paper})
+            else:
+                self._send_json({"success": False, "error": "Paper not found"}, status=404)
+            return
+
+        # Public Student Feedback Submission
+        elif path == "/api/feedback":
+            client_ip = self.client_address[0]
+            allowed, wait_sec = check_rate_limit(client_ip, FEEDBACK_RATE_LIMITS, max_requests=6, window_sec=600)
+            if not allowed:
+                self._send_json({"success": False, "error": f"Rate limit reached. Please wait {wait_sec} seconds before submitting."}, status=429)
+                return
+
+            message = data.get("message", "").strip()
+            if not message or len(message) < 3:
+                self._send_json({"success": False, "error": "Feedback message too short."}, status=400)
+                return
+
+            feedback_item = {
+                "id": f"fb_{int(time.time())}_{secrets.token_hex(4)}",
+                "email": data.get("email", "Anonymous Student"),
+                "category": data.get("category", "General Feedback"),
+                "message": message,
+                "submitted_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+            }
+
+            feedbacks = load_feedbacks()
+            feedbacks.insert(0, feedback_item)
+            save_feedbacks(feedbacks)
+            self._send_json({"success": True, "message": "Feedback submitted successfully."})
+            return
+
+        # Admin Feedback Management (Protected)
+        elif path == "/api/admin/feedbacks":
+            password = data.get("password", "")
+            if not password or password != ADMIN_PASSWORD:
+                self._send_json({"success": False, "error": "Unauthorized"}, status=401)
+                return
+
+            feedbacks = load_feedbacks()
+            self._send_json({"success": True, "feedbacks": feedbacks})
             return
 
         # Clear All Papers (Admin Only)

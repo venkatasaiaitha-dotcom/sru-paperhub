@@ -68,6 +68,9 @@ CREATE TABLE IF NOT EXISTS public.papers (
     extracted_text TEXT,
     ocr_confidence NUMERIC DEFAULT 0,
     download_count INTEGER DEFAULT 0,
+    is_approved BOOLEAN DEFAULT FALSE,
+    status TEXT DEFAULT 'pending',
+    uploader_email TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     CONSTRAINT chk_paper_code CHECK (length(subject_code) BETWEEN 2 AND 25),
     CONSTRAINT chk_paper_name CHECK (length(subject_name) BETWEEN 2 AND 150),
@@ -102,6 +105,31 @@ BEGIN
     ) THEN 
         ALTER TABLE public.papers ADD COLUMN ocr_confidence NUMERIC DEFAULT 0;
     END IF;
+
+    -- Safely add review and moderation columns
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'papers' AND column_name = 'is_approved'
+    ) THEN 
+        ALTER TABLE public.papers ADD COLUMN is_approved BOOLEAN DEFAULT FALSE;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'papers' AND column_name = 'status'
+    ) THEN 
+        ALTER TABLE public.papers ADD COLUMN status TEXT DEFAULT 'pending';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'papers' AND column_name = 'uploader_email'
+    ) THEN 
+        ALTER TABLE public.papers ADD COLUMN uploader_email TEXT;
+    END IF;
+
+    -- Grandfather existing papers without approval status as approved
+    UPDATE public.papers SET is_approved = TRUE, status = 'approved' WHERE is_approved IS NULL;
 END $$;
 
 -- Ensure identical question papers cannot be inserted twice (duplicate prevention)
@@ -294,33 +322,42 @@ ON public.admin_roles FOR SELECT
 TO authenticated
 USING (auth.uid() = user_id OR public.is_admin());
 
--- PAPERS POLICIES
+-- PAPERS POLICIES (Review & Public Approval Model)
+-- Public can ONLY read approved papers; Admins can read all papers (including pending)
 DROP POLICY IF EXISTS "Allow public read access to papers" ON public.papers;
 CREATE POLICY "Allow public read access to papers"
 ON public.papers FOR SELECT
-USING (true);
+USING (
+    is_approved = TRUE 
+    OR status = 'approved' 
+    OR public.is_admin() 
+    OR EXISTS (SELECT 1 FROM public.admin_roles WHERE user_id = auth.uid())
+);
 
--- Allow students and visitors to upload papers
+-- Public visitors can submit new papers (must be pending review)
 DROP POLICY IF EXISTS "Allow authenticated insert to papers" ON public.papers;
 DROP POLICY IF EXISTS "Allow public insert to papers" ON public.papers;
 CREATE POLICY "Allow public insert to papers"
 ON public.papers FOR INSERT
-WITH CHECK (true);
+WITH CHECK (
+    -- Public submissions enter as pending review
+    (is_approved = FALSE OR is_approved IS NULL OR public.is_admin())
+);
 
--- Only paper owner or admin can update papers
+-- Only verified administrators can approve, modify, or update papers
 DROP POLICY IF EXISTS "Allow owners and admin to update papers" ON public.papers;
-CREATE POLICY "Allow owners and admin to update papers"
+DROP POLICY IF EXISTS "Allow admin to update papers" ON public.papers;
+CREATE POLICY "Allow admin to update papers"
 ON public.papers FOR UPDATE
-TO authenticated
-USING (public.is_admin() OR auth.uid() = user_id)
-WITH CHECK (public.is_admin() OR auth.uid() = user_id);
+USING (public.is_admin() OR EXISTS (SELECT 1 FROM public.admin_roles WHERE user_id = auth.uid()))
+WITH CHECK (public.is_admin() OR EXISTS (SELECT 1 FROM public.admin_roles WHERE user_id = auth.uid()));
 
--- Only paper owner or admin can delete papers
+-- Only verified administrators can delete papers
 DROP POLICY IF EXISTS "Allow owners and admin to delete papers" ON public.papers;
-CREATE POLICY "Allow owners and admin to delete papers"
+DROP POLICY IF EXISTS "Allow admin to delete papers" ON public.papers;
+CREATE POLICY "Allow admin to delete papers"
 ON public.papers FOR DELETE
-TO authenticated
-USING (public.is_admin() OR auth.uid() = user_id);
+USING (public.is_admin() OR EXISTS (SELECT 1 FROM public.admin_roles WHERE user_id = auth.uid()));
 
 -- ANNOUNCEMENTS POLICIES
 DROP POLICY IF EXISTS "Allow public read announcements" ON public.announcements;
@@ -404,8 +441,7 @@ ON public.feedbacks FOR SELECT
 USING (
     public.is_admin() OR 
     EXISTS (SELECT 1 FROM public.admin_roles WHERE user_id = auth.uid()) OR
-    auth.role() = 'service_role' OR
-    true
+    auth.role() = 'service_role'
 );
 
 DROP POLICY IF EXISTS "Admin delete feedbacks" ON public.feedbacks;
@@ -414,8 +450,7 @@ ON public.feedbacks FOR DELETE
 USING (
     public.is_admin() OR 
     EXISTS (SELECT 1 FROM public.admin_roles WHERE user_id = auth.uid()) OR
-    auth.role() = 'service_role' OR
-    true
+    auth.role() = 'service_role'
 );
 
 -- Safely update exam_type constraint to allow RE_MID and MID_2
