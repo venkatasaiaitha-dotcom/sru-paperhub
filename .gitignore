@@ -11,13 +11,16 @@ __pycache__/
 env/
 venv/
 
+# Node
+node_modules/
+*.traineddata
+
 # Scratch & temporary logs/test scripts
 *.log
-tests/
-test_*.py
 check_*.py
 dump.html
 
 # OS metadata
 .DS_Store
 Thumbs.db
+

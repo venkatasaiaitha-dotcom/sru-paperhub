@@ -15,5 +15,8 @@
     "sr-university"
   ],
   "author": "SR University Student Developers",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "tesseract.js": "^7.0.0"
+  }
 }

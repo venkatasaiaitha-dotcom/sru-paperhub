@@ -8,6 +8,7 @@ import base64
 import time
 import secrets
 import mimetypes
+from .verifier import verifier
 
 PORT = int(os.environ.get("PORT", 3000))
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -301,6 +302,72 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
             self._send_json({"success": True, "announcement": text})
             return
 
+        # AI Document Verification API
+        elif path == "/api/verify":
+            client_ip = self.client_address[0]
+            allowed, wait_sec = check_rate_limit(client_ip, UPLOAD_RATE_LIMITS, max_requests=15, window_sec=600)
+            if not allowed:
+                self._send_json({"success": False, "error": f"Verification rate limit reached. Please wait {wait_sec}s."}, status=429)
+                return
+
+            image_data = data.get("imageData", "")
+            filename = data.get("filename", "document_upload")
+            mime_type = data.get("mimeType", "image/webp")
+            file_bytes = b""
+            if image_data.startswith("data:"):
+                try:
+                    header, encoded = image_data.split(",", 1)
+                    mime_type = header.split(";")[0].replace("data:", "").lower()
+                    file_bytes = base64.b64decode(encoded)
+                except Exception as e:
+                    self._send_json({"success": False, "error": f"Invalid file payload: {e}"}, status=400)
+                    return
+
+            student_selection = {
+                "branch": data.get("branch", ""),
+                "semester": data.get("semester", ""),
+                "regulation": data.get("regulation", ""),
+                "academicYear": data.get("academicYear", ""),
+                "subjectCode": data.get("subjectCode", ""),
+                "subjectName": data.get("subjectName", ""),
+                "examType": data.get("examType", "")
+            }
+            client_ocr = data.get("ocrText", "")
+            ocr_conf = float(data.get("ocrConfidence", 0))
+
+            report = verifier.verify(
+                file_bytes=file_bytes,
+                filename=filename,
+                mime_type=mime_type,
+                student_selection=student_selection,
+                client_ocr_text=client_ocr,
+                ocr_confidence=ocr_conf
+            )
+            self._send_json({"success": True, "report": report})
+            return
+
+        # Admin Reject Paper with Reason
+        elif path == "/api/admin/reject":
+            password = data.get("password", "")
+            if not password or password != ADMIN_PASSWORD:
+                self._send_json({"success": False, "error": "Unauthorized"}, status=401)
+                return
+
+            paper_id = data.get("paperId", "")
+            reason = data.get("reason", "Rejected by administrator review.")
+            papers = load_papers()
+            target_paper = next((p for p in papers if p.get("id") == paper_id), None)
+            if target_paper:
+                target_paper["is_approved"] = False
+                target_paper["status"] = "rejected"
+                target_paper["rejection_reason"] = reason
+                target_paper["reviewed_at"] = int(time.time())
+                save_papers(papers)
+                self._send_json({"success": True, "message": "Paper rejected", "paper": target_paper})
+            else:
+                self._send_json({"success": False, "error": "Paper not found"}, status=404)
+            return
+
         # Paper Upload (Public Submission - Enters Pending Review)
         elif path == "/api/upload":
             client_ip = self.client_address[0]
@@ -357,6 +424,32 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
             }
 
             new_id = f"sru_{branch.lower()}_{secrets.token_hex(6)}"
+            # Run AI verification if report not provided by client
+            verification_rep = data.get("verificationReport")
+            if not verification_rep:
+                raw_bytes = base64.b64decode(encoded) if image_data.startswith("data:") else b""
+                verification_rep = verifier.verify(
+                    file_bytes=raw_bytes,
+                    filename=filename if 'filename' in locals() else "paper.webp",
+                    mime_type=mime if 'mime' in locals() else "image/webp",
+                    student_selection={
+                        "branch": branch,
+                        "semester": sem,
+                        "regulation": reg,
+                        "academicYear": year,
+                        "subjectCode": code,
+                        "subjectName": name,
+                        "examType": exam
+                    },
+                    client_ocr_text=data.get("extractedText", ""),
+                    ocr_confidence=float(data.get("ocrConfidence", 0))
+                )
+
+            # Decision logic: APPROVED -> published; MANUAL_REVIEW -> pending; REJECTED -> rejected
+            decision = verification_rep.get("decision", "MANUAL_REVIEW")
+            is_approved = (decision == "APPROVED")
+            status = "approved" if decision == "APPROVED" else ("rejected" if decision == "REJECTED" else "pending")
+
             new_paper = {
                 "id": new_id,
                 "subjectCode": code,
@@ -376,8 +469,10 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
                 "uploadDate": "Just now",
                 "imageUrl": image_url,
                 "downloadCount": 0,
-                "is_approved": False,
-                "status": "pending",
+                "is_approved": is_approved,
+                "status": status,
+                "verification_report": verification_rep,
+                "course_coordinator": verification_rep.get("course_coordinator_name", "UNVERIFIED"),
                 "created_at": int(time.time())
             }
 

@@ -126,6 +126,36 @@ BEGIN
         WHERE table_schema = 'public' AND table_name = 'papers' AND column_name = 'uploader_email'
     ) THEN 
         ALTER TABLE public.papers ADD COLUMN uploader_email TEXT;
+
+    -- Safely add AI Document Verification columns
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'papers' AND column_name = 'verification_report'
+    ) THEN 
+        ALTER TABLE public.papers ADD COLUMN verification_report JSONB;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'papers' AND column_name = 'course_coordinator'
+    ) THEN 
+        ALTER TABLE public.papers ADD COLUMN course_coordinator TEXT;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'papers' AND column_name = 'verification_status'
+    ) THEN 
+        ALTER TABLE public.papers ADD COLUMN verification_status TEXT DEFAULT 'pending';
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'papers' AND column_name = 'rejection_reason'
+    ) THEN 
+        ALTER TABLE public.papers ADD COLUMN rejection_reason TEXT;
+    END IF;
+
     END IF;
 
     -- Grandfather existing papers without approval status as approved

@@ -1,2 +1,6 @@
-# Python Standard Library only (http.server, socketserver, json, urllib, base64)
-# No external pip dependencies needed for Python server
+# SR University PaperHub - Verification & Server Dependencies
+# Standard Library powers base HTTP server.
+# Optional high-performance document parsing & geometry engines:
+pymupdf>=1.24.0
+pillow>=10.0.0
+
