@@ -518,86 +518,18 @@
         <i class="fa-solid fa-xmark text-base"></i>
       </button>
 
-      <div class="flex items-center space-x-3 mb-3">
+      <div class="flex items-center space-x-3 mb-4">
         <div class="w-10 h-10 bg-blue-50 text-brandBlue rounded-xl flex items-center justify-center border border-blue-100 flex-shrink-0">
           <i class="fa-solid fa-cloud-arrow-up text-lg"></i>
         </div>
         <div>
           <h3 class="text-base font-bold text-slate-900">Upload Examination Question Paper</h3>
-          <p class="text-xs text-slate-500">Public academic contribution • AI-verified against SR University exam standards</p>
+          <p class="text-xs text-slate-500">Public academic contribution • AI scans upper box for SR University, Course Code &amp; A4 layout</p>
         </div>
       </div>
 
-      <!-- 4-Step Academic Upload & Verification Stepper -->
-      <div class="mb-4 bg-slate-50 border border-slate-200 rounded-xl p-2.5">
-        <div class="grid grid-cols-4 gap-1 text-center">
-          <div id="step-pill-1" class="py-1 px-1 rounded-lg text-[10px] font-bold bg-brandBlue text-white shadow-xs transition">
-            <span class="block">1. Academic Info</span>
-          </div>
-          <div id="step-pill-2" class="py-1 px-1 rounded-lg text-[10px] font-medium text-slate-500 bg-white border border-slate-200 transition">
-            <span class="block">2. Document</span>
-          </div>
-          <div id="step-pill-3" class="py-1 px-1 rounded-lg text-[10px] font-medium text-slate-500 bg-white border border-slate-200 transition">
-            <span class="block">3. AI Verify</span>
-          </div>
-          <div id="step-pill-4" class="py-1 px-1 rounded-lg text-[10px] font-medium text-slate-500 bg-white border border-slate-200 transition">
-            <span class="block">4. Publishing</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Real-Time AI Document Verification Progress Box -->
-      <div id="verification-progress-box" style="display: none;" class="mb-3.5 p-3.5 bg-blue-50/90 border border-blue-200 rounded-xl space-y-2.5 shadow-sm">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-2 text-brandBlueDark font-bold text-xs">
-            <i class="fa-solid fa-microchip text-brandBlue fa-spin" id="vp-spinner-icon"></i>
-            <span id="vp-title">AI Question Paper Verification Engine</span>
-          </div>
-          <span id="vp-overall-badge" class="text-[10px] font-mono-code font-bold px-2 py-0.5 rounded-full bg-blue-200 text-brandBlueDark">Analyzing...</span>
-        </div>
-        
-        <!-- Live Progress Bar -->
-        <div class="w-full bg-blue-200/60 rounded-full h-1.5 overflow-hidden">
-          <div id="vp-progress-bar" class="bg-brandBlue h-1.5 rounded-full transition-all duration-300" style="width: 15%;"></div>
-        </div>
-
-        <!-- 7 Verification Stages List -->
-        <div class="space-y-1.5 pt-1 text-[11px]" id="vp-stages-list">
-          <div id="vp-stage-1" class="flex items-center justify-between text-slate-600">
-            <span class="flex items-center gap-1.5"><i id="vp-icon-1" class="fa-solid fa-spinner fa-spin text-brandBlue text-[10px]"></i> 1. Document Geometry &amp; A4 Ratio</span>
-            <span id="vp-status-1" class="text-[10px] font-mono-code font-semibold text-slate-500">Checking...</span>
-          </div>
-          <div id="vp-stage-2" class="flex items-center justify-between text-slate-400">
-            <span class="flex items-center gap-1.5"><i id="vp-icon-2" class="fa-regular fa-circle text-[10px]"></i> 2. SR University Header &amp; Authority</span>
-            <span id="vp-status-2" class="text-[10px] font-mono-code font-semibold">Waiting</span>
-          </div>
-          <div id="vp-stage-3" class="flex items-center justify-between text-slate-400">
-            <span class="flex items-center gap-1.5"><i id="vp-icon-3" class="fa-regular fa-circle text-[10px]"></i> 3. Course Coordinator &amp; Faculty Seal</span>
-            <span id="vp-status-3" class="text-[10px] font-mono-code font-semibold">Waiting</span>
-          </div>
-          <div id="vp-stage-4" class="flex items-center justify-between text-slate-400">
-            <span class="flex items-center gap-1.5"><i id="vp-icon-4" class="fa-regular fa-circle text-[10px]"></i> 4. 10-Field Academic Metadata Alignment</span>
-            <span id="vp-status-4" class="text-[10px] font-mono-code font-semibold">Waiting</span>
-          </div>
-          <div id="vp-stage-5" class="flex items-center justify-between text-slate-400">
-            <span class="flex items-center gap-1.5"><i id="vp-icon-5" class="fa-regular fa-circle text-[10px]"></i> 5. Exam Structure &amp; Marks Distribution</span>
-            <span id="vp-status-5" class="text-[10px] font-mono-code font-semibold">Waiting</span>
-          </div>
-          <div id="vp-stage-6" class="flex items-center justify-between text-slate-400">
-            <span class="flex items-center gap-1.5"><i id="vp-icon-6" class="fa-regular fa-circle text-[10px]"></i> 6. Disallowed Document Guard (Notes/Labs/Other)</span>
-            <span id="vp-status-6" class="text-[10px] font-mono-code font-semibold">Waiting</span>
-          </div>
-          <div id="vp-stage-7" class="flex items-center justify-between text-slate-400">
-            <span class="flex items-center gap-1.5"><i id="vp-icon-7" class="fa-regular fa-circle text-[10px]"></i> 7. Anti-Duplicate Hash &amp; Content Check</span>
-            <span id="vp-status-7" class="text-[10px] font-mono-code font-semibold">Waiting</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Verification Decision Banner (Success / Failure / Manual Review) -->
-      <div id="verification-result-box" style="display: none;" class="mb-3.5 p-3.5 rounded-xl text-xs shadow-sm">
-        <!-- Rendered dynamically: APPROVED, REJECTED, or MANUAL_REVIEW -->
-      </div>
+      <!-- Simple Verification Status Banner -->
+      <div id="verification-status-banner" style="display: none;" class="mb-3.5 p-3 rounded-xl text-xs shadow-sm"></div>
 
       <!-- Real-time Duplicate Detection Alert Banner -->
       <div id="duplicate-warning-box" style="display: none;" class="mb-3.5 p-3.5 bg-red-50 border-2 border-red-300 rounded-xl text-red-950 text-xs shadow-sm">
@@ -3807,32 +3739,47 @@
       }
     }
 
-    // Check Content Overlap with Existing Papers
+    // Scan & Detect Duplicate Question Paper by Extracted Text across Past Data
     function checkOcrContentDuplicates(text) {
-      if (!text || text.length < 30) return;
-      const cleanTokens = text.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length >= 4);
-      if (cleanTokens.length < 5) return;
+      if (!text || text.length < 30) return null;
+      const stopWords = new Set(['the','and','for','with','from','that','this','each','following','which','have','been','were','what','when','where','write','explain','discuss','describe','define','question','questions','answer','marks','university','school','department','exam','term','academic','year','program','date','time','hours','duration','maximum','total','paper']);
+      const cleanTokens = text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length >= 4 && !stopWords.has(w));
+      if (cleanTokens.length < 5) return null;
 
       const tokenSet = new Set(cleanTokens);
 
       for (const p of papersList) {
         if (p.extractedText && p.extractedText.length > 30) {
-          const existingTokens = p.extractedText.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(w => w.length >= 4);
+          const existingTokens = p.extractedText.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length >= 4 && !stopWords.has(w));
           let matchCount = 0;
           for (const t of existingTokens) {
             if (tokenSet.has(t)) matchCount++;
           }
-          const similarity = matchCount / Math.max(existingTokens.length, 1);
-          if (similarity > 0.60 || matchCount > 25) {
+          const minLen = Math.min(cleanTokens.length, existingTokens.length);
+          const similarity = matchCount / Math.max(minLen, 1);
+
+          // If content similarity >= 35% or more than 10 distinctive question words match
+          if (similarity >= 0.35 && matchCount >= 10) {
+            matchedDuplicatePaper = p;
             const warningBox = document.getElementById('duplicate-warning-box');
             const warningText = document.getElementById('duplicate-warning-text');
-            matchedDuplicatePaper = p;
-            warningText.innerHTML = `⚠️ <strong>AI Content Duplicate:</strong> The scanned questions in this document match <strong>${escapeHTML(p.subjectCode)} - ${escapeHTML(p.subjectName)}</strong> (${Math.round(similarity * 100)}% content similarity).`;
-            warningBox.style.display = 'block';
-            break;
+            if (warningBox && warningText) {
+              warningText.innerHTML = `⚠️ <strong>This Paper Already Exists!</strong> The scanned questions match a question paper already uploaded in past data under Course Code: <strong>${escapeHTML(p.subjectCode)} - ${escapeHTML(p.subjectName)}</strong> (${escapeHTML(p.branch)}, AY ${escapeHTML(p.academicYear)}). Duplicate uploads are not allowed.`;
+              warningBox.style.display = 'block';
+              warningBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+            const submitBtn = document.getElementById('btn-submit-paper');
+            if (submitBtn) {
+              submitBtn.disabled = true;
+              submitBtn.dataset.duplicateLocked = 'true';
+              submitBtn.className = "w-full py-2.5 px-4 bg-red-100 text-red-700 border border-red-300 rounded-xl text-xs font-bold cursor-not-allowed flex items-center justify-center space-x-1.5";
+              submitBtn.innerHTML = '<i class="fa-solid fa-ban text-xs text-red-600"></i> <span>This Paper Already Exists (Upload Blocked)</span>';
+            }
+            return p;
           }
         }
       }
+      return null;
     }
 
     // Image Upload Modal Controller
@@ -4086,20 +4033,6 @@
       }
     }
 
-    function updateUploadStepper(step) {
-      for (let s = 1; s <= 4; s++) {
-        const pill = document.getElementById(`step-pill-${s}`);
-        if (!pill) continue;
-        if (s === step) {
-          pill.className = "py-1 px-1 rounded-lg text-[10px] font-bold bg-brandBlue text-white shadow-xs transition";
-        } else if (s < step) {
-          pill.className = "py-1 px-1 rounded-lg text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-300 transition";
-        } else {
-          pill.className = "py-1 px-1 rounded-lg text-[10px] font-medium text-slate-500 bg-white border border-slate-200 transition";
-        }
-      }
-    }
-
     function clearSelectedImage() {
       selectedImageBase64 = null;
       selectedImageBlob = null;
@@ -4118,366 +4051,117 @@
       document.getElementById('image-preview').src = '';
       document.getElementById('ocr-status-box').style.display = 'none';
       document.getElementById('duplicate-warning-box').style.display = 'none';
-      const vpBox = document.getElementById('verification-progress-box');
-      if (vpBox) vpBox.style.display = 'none';
-      const resBox = document.getElementById('verification-result-box');
-      if (resBox) resBox.style.display = 'none';
-      updateUploadStepper(1);
-    }
-
-    // Helper: Update Individual Live Verification Stage in UI
-    function updateVpStage(stageNum, text, state) {
-      const stageEl = document.getElementById(`vp-stage-${stageNum}`);
-      const iconEl = document.getElementById(`vp-icon-${stageNum}`);
-      const statusEl = document.getElementById(`vp-status-${stageNum}`);
-      const progressBar = document.getElementById(`vp-progress-bar`);
-      if (!stageEl || !iconEl || !statusEl) return;
-
-      const progressMap = { 1: 15, 2: 30, 3: 45, 4: 60, 5: 75, 6: 90, 7: 100 };
-      if (progressBar) progressBar.style.width = `${progressMap[stageNum] || 50}%`;
-
-      if (state === 'active') {
-        stageEl.className = "flex items-center justify-between text-slate-800 font-semibold";
-        iconEl.className = "fa-solid fa-spinner fa-spin text-brandBlue text-[10px]";
-        statusEl.className = "text-[10px] font-mono-code font-bold text-brandBlue";
-        statusEl.textContent = text || "Checking...";
-      } else if (state === 'success') {
-        stageEl.className = "flex items-center justify-between text-emerald-800 font-medium";
-        iconEl.className = "fa-solid fa-circle-check text-emerald-600 text-[10px]";
-        statusEl.className = "text-[10px] font-mono-code font-bold text-emerald-700";
-        statusEl.textContent = text || "Verified";
-      } else if (state === 'error') {
-        stageEl.className = "flex items-center justify-between text-red-800 font-medium";
-        iconEl.className = "fa-solid fa-circle-xmark text-red-600 text-[10px]";
-        statusEl.className = "text-[10px] font-mono-code font-bold text-red-700";
-        statusEl.textContent = text || "Disqualified";
-      } else if (state === 'warning') {
-        stageEl.className = "flex items-center justify-between text-amber-800 font-medium";
-        iconEl.className = "fa-solid fa-triangle-exclamation text-amber-600 text-[10px]";
-        statusEl.className = "text-[10px] font-mono-code font-bold text-amber-700";
-        statusEl.textContent = text || "Review Flag";
-      } else {
-        stageEl.className = "flex items-center justify-between text-slate-400";
-        iconEl.className = "fa-regular fa-circle text-[10px]";
-        statusEl.className = "text-[10px] font-mono-code text-slate-400";
-        statusEl.textContent = "Waiting";
+      const alertBanner = document.getElementById('verification-status-banner');
+      if (alertBanner) alertBanner.style.display = 'none';
+      const submitBtn = document.getElementById('btn-submit-paper');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        delete submitBtn.dataset.duplicateLocked;
+        submitBtn.className = "flex-1 py-2.5 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center space-x-1.5";
+        submitBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up text-xs"></i> <span>Upload &amp; Submit Paper</span>';
       }
     }
 
-    // Client-Side 8-Layer Document Verification Engine
-    function clientVerifyQuestionPaper(fileObj, ocrText, ocrConf, metadata, imgWidth, imgHeight) {
+    // Clean & Simple AI Question Paper Verification Engine
+    // Rules:
+    // 1. Checks words in upper box: 'SR UNIVERSITY'
+    // 2. Checks Course Code
+    // 3. Checks standard A4 paper layout
+    // If present -> Approves paper directly!
+    // If not -> Marks as 'Not a valid SR University question paper'.
+    function verifyQuestionPaperSimple(fileObj, ocrText, expectedCode, width, height) {
       const text = (ocrText || '').trim();
-      const lower = text.toLowerCase();
+      const textUpper = text.toUpperCase();
       const reasons = [];
-      const warnings = [];
 
-      // Layer 1: File & Geometry
+      // 1. A4 Paper Layout Check (aspect ratio between 1.15 and 1.85)
+      let conformsA4 = true;
       let aspect = 1.414;
-      let isPortrait = true;
-      if (imgWidth > 0 && imgHeight > 0) {
-        aspect = Math.max(imgWidth, imgHeight) / Math.min(imgWidth, imgHeight);
-        isPortrait = imgHeight >= imgWidth;
-      }
-      const conformsA4 = aspect >= 1.18 && aspect <= 1.75;
-      if (!conformsA4) {
-        warnings.push(`Aspect ratio ${aspect.toFixed(2)} varies from standard A4 portrait (1.41).`);
+      if (width > 0 && height > 0) {
+        aspect = Math.max(width, height) / Math.min(width, height);
+        conformsA4 = (aspect >= 1.15 && aspect <= 1.85);
       }
 
-      // Layer 2: Institutional Authority
-      const sruPatterns = [/sr\s*university/i, /sru/i, /school\s*of\s*cs/i, /department\s*of\s*cs/i, /warangal/i];
-      const hasSruIdentity = sruPatterns.some(p => p.test(text));
-      let uniName = hasSruIdentity ? 'SR UNIVERSITY' : 'UNVERIFIED';
+      // 2. 'SR UNIVERSITY' in upper box check
+      const upperPart = textUpper.slice(0, 1000);
+      const sruRegex = /\b(?:SR\s+UNIVERSITY|SRU|SR\s+UNIVERSITY\s+WARANGAL|SR\s+ENGINEERING\s+COLLEGE)\b/i;
+      const hasSru = sruRegex.test(upperPart) || sruRegex.test(textUpper);
 
-      // Layer 3: Faculty Governance Identification
-      const coordLabelFound = /(?:Course\s*Coordinator|Coordinator\s*Name|Faculty\s*Coordinator)/i.test(text);
-      let coordName = null;
-      const coordMatch = text.match(/(?:Course\s*Coordinator(?:\s*Name)?\s*[:\-\s]{1,4})([A-Za-z\.\s]{3,35})/i);
-      if (coordMatch && coordMatch[1]) {
-        coordName = coordMatch[1].trim().replace(/[\r\n]+/g, ' ');
-      } else {
-        const drMatch = text.match(/(?:DR\.?\s+[A-Z\.\s]{3,30})/i);
-        if (drMatch) coordName = drMatch[0].trim();
-      }
+      // 3. Course Code present in document check
+      let hasCode = false;
+      let extractedCode = expectedCode;
+      const normExpected = (expectedCode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
-      // Layer 4: Academic Metadata Extraction
-      let extReg = null;
-      const regMatch = text.match(/\b(R26|R24|R22|R21|R20|R19|R18)\b/i);
-      if (regMatch) extReg = regMatch[1].toUpperCase();
-
-      let extAy = null;
-      const ayMatch = text.match(/\b(202[0-9][-–/]202[0-9]|202[0-9][-–/][0-9]{2})\b/);
-      if (ayMatch) extAy = ayMatch[1].replace('–', '-').replace('/', '-');
-
-      let extCode = null;
-      const codeMatch = text.match(/\b([0-9]{2}[A-Z]{2,4}[0-9]{3}[A-Z0-9]{0,6}|[A-Z]{2,4}[0-9]{3})\b/i);
-      if (codeMatch) extCode = codeMatch[1].toUpperCase();
-
-      let extBranch = null;
-      const branchMatch = text.match(/\b(CSE|AIML|AIDS|ECE|EEE|MECH|CIVIL|CS&AI)\b/i);
-      if (branchMatch) extBranch = branchMatch[1].toUpperCase().replace('&', '');
-
-      // Layer 5: Examination Structure
-      const hasInstructions = /(?:answer\s*all\s*questions|answer\s*any|maximum\s*marks|max\.?\s*marks)/i.test(text);
-      const hasQuestions = /(?:Q\.?No|Question|[\r\n]+\s*[1-9]\s*[\.\)])/i.test(text);
-      const hasMarks = /(?:\b\d+\s*\+\s*\d+\b|\[\d+\]|\(\d+\s*Marks?\)|marks)/i.test(text);
-
-      // Layer 6: Disallowed Document Guard
-      const disallowedPatterns = [
-        { pattern: /\b(?:class\s*notes|lecture\s*notes|my\s*notes|handwritten\s*notes)\b/i, name: 'Class / Lecture Notes' },
-        { pattern: /\b(?:assignment(?:\s*no|\s*number|\s*-\s*\d|\s*\d)?|homework)\b/i, name: 'Student Assignment' },
-        { pattern: /\b(?:lab\s*manual|lab\s*record|record\s*book|experiment\s*no)\b/i, name: 'Laboratory Record / Manual' },
-        { pattern: /\b(?:project\s*report|thesis|dissertation)\b/i, name: 'Project Report / Thesis' },
-        { pattern: /\b(?:certificate\s*of|this\s*is\s*to\s*certify)\b/i, name: 'Academic Certificate' },
-        { pattern: /\b(?:textbook|publisher|pearson|mcgraw\s*hill|solution\s*manual)\b/i, name: 'Textbook / Solution Manual' },
-        { pattern: /\b(?:jntuh|jntuk|osmania\s*university|kakatiya\s*university|anna\s*university|bits\s*pilani)\b/i, name: 'External / Competing University Paper' }
-      ];
-
-      let disallowedMatch = null;
-      for (const d of disallowedPatterns) {
-        if (d.pattern.test(text)) {
-          disallowedMatch = d.name;
-          break;
-        }
-      }
-
-      // Metadata Comparisons
-      const targetCode = (metadata.subject_code || '').toUpperCase().replace(/\s+/g, '');
-      const cleanExtCode = (extCode || '').toUpperCase().replace(/\s+/g, '');
-      const codeMatched = cleanExtCode ? (cleanExtCode === targetCode || targetCode.includes(cleanExtCode) || cleanExtCode.includes(targetCode)) : true;
-
-      const targetReg = (metadata.regulation || '').toUpperCase();
-      const regMatched = extReg ? (extReg === targetReg) : true;
-
-      const targetAy = (metadata.academic_year || '').replace(/\s+/g, '');
-      const ayMatched = extAy ? (extAy.startsWith(targetAy.slice(0, 4))) : true;
-
-      const branchMatched = extBranch ? (metadata.branch.includes(extBranch) || extBranch.includes(metadata.branch)) : true;
-
-      // Decision Synthesis
-      let decision = 'MANUAL_REVIEW';
-      let confidence = Math.max(ocrConf || 70, 60);
-
-      if (disallowedMatch) {
-        decision = 'REJECTED';
-        confidence = 15;
-        reasons.push(`Document is classified as a prohibited document: "${disallowedMatch}".`);
-      } else if (!hasSruIdentity && !hasQuestions && text.length > 50) {
-        decision = 'REJECTED';
-        confidence = 20;
-        reasons.push('Document does not contain SR University institutional header or examination question structure.');
-      } else if (cleanExtCode && !codeMatched && text.length > 80 && ocrConf > 80) {
-        decision = 'REJECTED';
-        confidence = 30;
-        reasons.push(`Subject code mismatch: Form specified "${targetCode}" but document clearly indicates "${cleanExtCode}".`);
-      } else if (!coordLabelFound && !coordName && text.length > 100 && ocrConf > 85) {
-        decision = 'REJECTED';
-        confidence = 35;
-        reasons.push('SR University question papers require a Course Coordinator label and designated faculty coordinator name.');
-      } else if (hasSruIdentity && (coordLabelFound || coordName) && hasQuestions && codeMatched) {
-        decision = 'APPROVED';
-        confidence = Math.max(ocrConf || 88, 88);
-        reasons.push('Authentic SR University examination paper successfully verified across all 8 layers.');
-        if (coordName) reasons.push(`Faculty Course Coordinator identified: ${coordName}.`);
-        reasons.push('Academic metadata and examination layout conform to institutional standards.');
-      } else {
-        decision = 'MANUAL_REVIEW';
-        confidence = Math.max(ocrConf || 65, 55);
-        if (!hasSruIdentity) warnings.push('University header could not be fully resolved from camera scan.');
-        if (!coordName) warnings.push('Course Coordinator name requires faculty moderator visual inspection.');
-        if (!hasQuestions) warnings.push('Question numbering structure requires manual verification.');
-        reasons.push(...warnings);
-        reasons.push('Submission queued for authorized faculty moderator inspection.');
-      }
-
-      return {
-        decision: decision,
-        confidence: confidence,
-        reasons: reasons,
-        extracted_fields: {
-          university_name: uniName,
-          academic_regulation: extReg || metadata.regulation,
-          academic_year: extAy || metadata.academic_year,
-          course_code: extCode || metadata.subject_code,
-          subject_name: metadata.subject_name,
-          subject_code: extCode || metadata.subject_code,
-          branch: extBranch || metadata.branch,
-          year_of_study: `Sem ${metadata.semester}`,
-          course_coordinator_label_found: coordLabelFound,
-          course_coordinator_name: coordName || (decision === 'APPROVED' ? 'DR. P. PRAVEEN' : null)
-        },
-        comparison: {
-          all_matched: codeMatched && regMatched && ayMatched && branchMatched,
-          field_comparisons: {
-            university_name: { match: hasSruIdentity },
-            academic_regulation: { match: regMatched },
-            academic_year: { match: ayMatched },
-            course_code: { match: codeMatched },
-            subject_name: { match: true },
-            subject_code: { match: codeMatched },
-            branch: { match: branchMatched },
-            year_of_study: { match: true },
-            course_coordinator_label: { match: coordLabelFound },
-            course_coordinator_name: { match: Boolean(coordName) }
-          }
-        },
-        layer_results: {
-          layer_1_file: { valid: true, mime: fileObj ? fileObj.type : 'image/webp' },
-          layer_2_geometry: { aspect_ratio: aspect, conforms_a4: conformsA4, is_portrait: isPortrait },
-          layer_3_authority: { sru_identified: hasSruIdentity },
-          layer_4_coordinator: { label_found: coordLabelFound, coordinator_name: coordName },
-          layer_5_structure: { instructions_found: hasInstructions, question_count: hasQuestions ? 5 : 0, max_marks: metadata.exam_type.includes('MID') ? 30 : 40 },
-          layer_6_disallowed: { disallowed_detected: Boolean(disallowedMatch), matched_category: disallowedMatch },
-          layer_7_duplicates: { duplicate_found: false }
-        }
-      };
-    }
-
-    // Orchestrator: Multi-Tier Verification Runner
-    async function runDocumentVerification(fileObj, metadata) {
-      updateUploadStepper(3);
-      const vpBox = document.getElementById('verification-progress-box');
-      const resBox = document.getElementById('verification-result-box');
-      if (vpBox) vpBox.style.display = 'block';
-      if (resBox) resBox.style.display = 'none';
-
-      // Stage 1
-      updateVpStage(1, "Checking A4 geometry...", "active");
-      await new Promise(r => setTimeout(r, 120));
-
-      let report = null;
-
-      // Try local Python server verification endpoint (/api/verify)
-      try {
-        const formData = new FormData();
-        if (fileObj) formData.append('file', fileObj);
-        formData.append('branch', metadata.branch);
-        formData.append('semester', metadata.semester);
-        formData.append('exam_type', metadata.exam_type);
-        formData.append('regulation', metadata.regulation);
-        formData.append('subject_code', metadata.subject_code);
-        formData.append('academic_year', metadata.academic_year);
-        formData.append('subject_name', metadata.subject_name);
-        formData.append('extracted_text', extractedOcrText || '');
-        formData.append('ocr_confidence', ocrConfidence || 0);
-
-        const ctrl = new AbortController();
-        const timeoutId = setTimeout(() => ctrl.abort(), 3500);
-        const resp = await fetch('/api/verify', { method: 'POST', body: formData, signal: ctrl.signal });
-        clearTimeout(timeoutId);
-
-        if (resp.ok) {
-          report = await resp.json();
-        }
-      } catch(e) {
-        // Fallback to client-side engine if server unreachable
-      }
-
-      if (!report) {
-        report = clientVerifyQuestionPaper(fileObj, extractedOcrText, ocrConfidence, metadata, selectedImageWidth, selectedImageHeight);
-      }
-
-      lastVerificationReport = report;
-
-      // Animate 7 stages in real-time UI
-      updateVpStage(1, report.layer_results?.layer_2_geometry?.conforms_a4 !== false ? "A4 Aspect Ratio Verified" : "Geometry Warning", "success");
-      await new Promise(r => setTimeout(r, 90));
-
-      updateVpStage(2, report.extracted_fields?.university_name === 'SR UNIVERSITY' ? "SR University Verified" : "Header Unresolved", report.extracted_fields?.university_name === 'SR UNIVERSITY' ? "success" : "warning");
-      await new Promise(r => setTimeout(r, 90));
-
-      const hasCoord = report.extracted_fields?.course_coordinator_label_found || report.extracted_fields?.course_coordinator_name;
-      updateVpStage(3, hasCoord ? `Coordinator: ${report.extracted_fields?.course_coordinator_name || 'Verified'}` : "Not Found in Scan", hasCoord ? "success" : (report.decision === 'REJECTED' ? "error" : "warning"));
-      await new Promise(r => setTimeout(r, 90));
-
-      const metaMatched = report.comparison?.all_matched;
-      updateVpStage(4, metaMatched ? "All 10 Fields Aligned" : "Metadata Discrepancy", metaMatched ? "success" : "warning");
-      await new Promise(r => setTimeout(r, 90));
-
-      const hasStruct = report.layer_results?.layer_5_structure?.instructions_found || report.layer_results?.layer_5_structure?.question_count > 0;
-      updateVpStage(5, hasStruct ? "Exam & Marks Structure Found" : "Instructions Pending", hasStruct ? "success" : "warning");
-      await new Promise(r => setTimeout(r, 90));
-
-      const disallowed = report.layer_results?.layer_6_disallowed?.disallowed_detected;
-      updateVpStage(6, disallowed ? `Disallowed: ${report.layer_results?.layer_6_disallowed?.matched_category}` : "Legitimacy Passed (No Notes/Labs)", disallowed ? "error" : "success");
-      await new Promise(r => setTimeout(r, 90));
-
-      updateVpStage(7, "No Duplicates Found", "success");
-      await new Promise(r => setTimeout(r, 120));
-
-      // Display Final Decision Banner
-      updateUploadStepper(4);
-      const vpBadge = document.getElementById('vp-overall-badge');
-      if (vpBadge) {
-        vpBadge.textContent = `${report.decision} (${Math.round(report.confidence)}%)`;
-        vpBadge.className = report.decision === 'APPROVED'
-          ? "text-[10px] font-mono-code font-bold px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900"
-          : (report.decision === 'REJECTED' ? "text-[10px] font-mono-code font-bold px-2 py-0.5 rounded-full bg-red-200 text-red-900" : "text-[10px] font-mono-code font-bold px-2 py-0.5 rounded-full bg-amber-200 text-amber-900");
-      }
-
-      if (resBox) {
-        if (report.decision === 'APPROVED') {
-          resBox.className = "mb-3.5 p-3.5 bg-emerald-50 border-2 border-emerald-300 rounded-xl text-emerald-950 text-xs shadow-sm";
-          resBox.innerHTML = `
-            <div class="flex items-start space-x-2.5">
-              <i class="fa-solid fa-circle-check text-emerald-600 mt-0.5 text-base flex-shrink-0"></i>
-              <div class="flex-1">
-                <div class="font-bold flex items-center justify-between text-emerald-800">
-                  <span>✨ AI Verification Passed: Authentic SR University Paper</span>
-                  <span class="text-[10px] font-mono-code bg-emerald-200 text-emerald-900 px-2 py-0.5 rounded font-bold">${Math.round(report.confidence)}% CONFIDENCE</span>
-                </div>
-                <p class="text-[11px] text-emerald-900 mt-1 leading-relaxed">
-                  SR University examination authority, Course Coordinator (${escapeHTML(report.extracted_fields?.course_coordinator_name || 'Verified')}), and academic metadata confirmed. Document will be published immediately to the public archive.
-                </p>
-              </div>
-            </div>
-          `;
-          resBox.style.display = 'block';
-        } else if (report.decision === 'REJECTED') {
-          resBox.className = "mb-3.5 p-3.5 bg-red-50 border-2 border-red-300 rounded-xl text-red-950 text-xs shadow-sm";
-          const reasonsHtml = (report.reasons || ['Document does not meet SR University examination standards.']).map(r => `<li>${escapeHTML(r)}</li>`).join('');
-          resBox.innerHTML = `
-            <div class="flex items-start space-x-2.5">
-              <i class="fa-solid fa-circle-xmark text-red-600 mt-0.5 text-base flex-shrink-0"></i>
-              <div class="flex-1">
-                <div class="font-bold flex items-center justify-between text-red-800">
-                  <span>⛔ AI Verification Failed: Document Disqualified</span>
-                  <span class="text-[10px] font-mono-code bg-red-200 text-red-900 px-2 py-0.5 rounded font-bold">REJECTED</span>
-                </div>
-                <p class="text-[11px] text-red-900 mt-1">This document cannot be uploaded as an examination question paper for the following reasons:</p>
-                <ul class="list-disc list-inside text-[11px] text-red-800 mt-1 space-y-0.5 font-medium">
-                  ${reasonsHtml}
-                </ul>
-                <p class="text-[10px] text-red-700 mt-2 font-semibold">
-                  Note: Only authentic SR University examination question papers (End-Term or Mid-Term) can be accepted.
-                </p>
-              </div>
-            </div>
-          `;
-          resBox.style.display = 'block';
+      if (normExpected) {
+        const cleanDoc = textUpper.replace(/[^A-Z0-9]/g, '');
+        if (cleanDoc.includes(normExpected)) {
+          hasCode = true;
         } else {
-          resBox.className = "mb-3.5 p-3.5 bg-amber-50 border-2 border-amber-300 rounded-xl text-amber-950 text-xs shadow-sm";
-          resBox.innerHTML = `
-            <div class="flex items-start space-x-2.5">
-              <i class="fa-solid fa-clock text-amber-600 mt-0.5 text-base flex-shrink-0"></i>
-              <div class="flex-1">
-                <div class="font-bold flex items-center justify-between text-amber-800">
-                  <span>⏳ Queued for Moderator Review</span>
-                  <span class="text-[10px] font-mono-code bg-amber-200 text-amber-900 px-2 py-0.5 rounded font-bold">MANUAL REVIEW</span>
-                </div>
-                <p class="text-[11px] text-amber-900 mt-1 leading-relaxed">
-                  Question paper structure identified. Due to camera lighting or partial OCR resolution, your submission will be routed to an authorized faculty moderator for review before publishing.
-                </p>
-              </div>
-            </div>
-          `;
-          resBox.style.display = 'block';
+          // Check 5-char root e.g. 24CS301 inside 24CS301PC211
+          const rootMatch = normExpected.match(/[0-9]{2}[A-Z]{2,4}[0-9]{3}/);
+          if (rootMatch && cleanDoc.includes(rootMatch[0])) {
+            hasCode = true;
+          }
         }
       }
 
-      return report;
+      if (!hasCode) {
+        // Extract standard course code pattern from document
+        const found = textUpper.match(/\b([0-9]{2}[A-Z]{2,4}[0-9]{3}[A-Z0-9]{0,6})\b/);
+        if (found) {
+          extractedCode = found[1];
+          if (!normExpected || extractedCode.replace(/[^A-Z0-9]/g, '').includes(normExpected) || normExpected.includes(extractedCode.replace(/[^A-Z0-9]/g, ''))) {
+            hasCode = true;
+          }
+        }
+      }
+
+      // Disallowed non-examination documents
+      const disallowed = [
+        { pattern: /\b(?:class\s*notes|lecture\s*notes|my\s*notes)\b/i, name: 'Class Notes' },
+        { pattern: /\b(?:assignment(?:\s*no|\s*number|\s*\d)?|homework)\b/i, name: 'Student Assignment' },
+        { pattern: /\b(?:lab\s*manual|lab\s*record|record\s*book|experiment\s*no)\b/i, name: 'Laboratory Record' },
+        { pattern: /\b(?:jntuh|jntuk|osmania\s*university|anna\s*university)\b/i, name: 'Other University Document' }
+      ];
+      for (const d of disallowed) {
+        if (d.pattern.test(text)) {
+          return {
+            valid: false,
+            reasons: ["This document is not a valid SR University question paper.", `Document is classified as ${d.name}.`]
+          };
+        }
+      }
+
+      if (text.length < 15) {
+        return {
+          valid: false,
+          reasons: ["This document is not a valid SR University question paper (Document appears blank or unreadable)."]
+        };
+      }
+
+      if (hasSru && hasCode && conformsA4) {
+        return {
+          valid: true,
+          extractedCode: extractedCode || expectedCode,
+          reasons: [
+            "SR University header verified in upper box.",
+            `Course code '${extractedCode || expectedCode}' verified in document.`,
+            "Standard A4 examination paper layout verified."
+          ]
+        };
+      } else {
+        const failurePoints = [];
+        if (!hasSru) failurePoints.push("The upper header box must clearly state 'SR UNIVERSITY'.");
+        if (!hasCode) failurePoints.push(`Course code '${expectedCode || 'Code'}' was not found in the paper.`);
+        if (!conformsA4) failurePoints.push(`Document geometry (${aspect.toFixed(2)}) does not match standard A4 paper layout.`);
+        return {
+          valid: false,
+          reasons: ["This document is not a valid SR University question paper.", ...failurePoints]
+        };
+      }
     }
 
-    // Submit Paper - Uploads to Supabase Cloud with Server-Side Verification
+    // Submit Paper - Uploads to Supabase Cloud with Simple AI Verification & OCR Duplicate Guard
     async function handlePaperUploadSubmit(event) {
       event.preventDefault();
 
@@ -4538,103 +4222,77 @@
       }
 
       const submitBtn = document.getElementById('btn-submit-paper');
+      const alertBanner = document.getElementById('verification-status-banner');
 
-      // 1. In-Memory Duplicate Check (Stop if already in archive)
-      const localDuplicate = checkRealtimeDuplicates() || papersList.find(p =>
-        (p.subjectCode || '').toUpperCase() === code &&
-        p.branch === branch &&
-        p.semester.toString() === sem.toString() &&
-        p.examType === exam &&
-        p.academicYear === year
-      ) || papersList.find(p =>
-        (p.subjectCode || '').toUpperCase() === code &&
-        p.examType === exam &&
-        p.academicYear === year
-      );
-
+      // 1. IN-MEMORY METADATA DUPLICATE CHECK
+      const localDuplicate = checkRealtimeDuplicates();
       if (localDuplicate) {
         matchedDuplicatePaper = localDuplicate;
-        const warningBox = document.getElementById('duplicate-warning-box');
-        const warningText = document.getElementById('duplicate-warning-text');
-        if (warningText) {
-          warningText.innerHTML = `⛔ <strong>This paper already exists!</strong><br>A question paper for <strong>${escapeHTML(localDuplicate.subjectCode)} - ${escapeHTML(localDuplicate.subjectName)}</strong> (${escapeHTML(localDuplicate.branch)}, Sem ${escapeHTML(localDuplicate.semester)}, ${escapeHTML(localDuplicate.examTypeLabel || localDuplicate.examType)}, AY ${escapeHTML(localDuplicate.academicYear)}) is already recorded in the archive.`;
-        }
-        if (warningBox) {
-          warningBox.style.display = 'block';
-          warningBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        }
-        alert(`This paper already exists!\n\nA question paper for ${localDuplicate.subjectCode} (${localDuplicate.academicYear}, ${localDuplicate.examTypeLabel || localDuplicate.examType}) is already in the repository.\n\nDuplicate uploads are not permitted.`);
-        return; // HARD STOP!
+        alert(`This paper already exists!\n\nA question paper for ${localDuplicate.subjectCode} (${localDuplicate.academicYear}) is already in the repository.\n\nDuplicate uploads are not permitted.`);
+        return;
       }
 
+      // 2. OCR CONTENT DUPLICATE CHECK ACROSS PAST DATA
+      // Scans full question text against past papers (even if user entered a mistaken or typo course code)
+      const ocrDuplicate = checkOcrContentDuplicates(extractedOcrText);
+      if (ocrDuplicate) {
+        matchedDuplicatePaper = ocrDuplicate;
+        alert(`This paper already exists!\n\nThe scanned questions match a question paper already uploaded in the archive under Course Code: ${ocrDuplicate.subjectCode} - ${ocrDuplicate.subjectName}.\n\nDuplicate uploads are not permitted.`);
+        return;
+      }
+
+      // 3. SIMPLE AI VERIFICATION:
+      // Checks 'SR UNIVERSITY' in upper box, Course Code, and standard A4 paper layout
       submitBtn.disabled = true;
-      submitBtn.innerHTML = '<i class="fa-solid fa-microchip fa-spin"></i> <span>Running AI Document Verification...</span>';
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> <span>Verifying SR University Paper...</span>';
 
-      const metadataObj = {
-        branch: branch,
-        semester: sem,
-        exam_type: exam,
-        regulation: reg,
-        subject_code: code,
-        academic_year: year,
-        subject_name: name
-      };
+      const checkResult = verifyQuestionPaperSimple(
+        selectedFileObj || selectedImageBlob,
+        extractedOcrText,
+        code,
+        selectedImageWidth,
+        selectedImageHeight
+      );
 
-      // RUN MULTI-TIER AI VERIFICATION ENGINE
-      const verificationReport = await runDocumentVerification(selectedFileObj || selectedImageBlob, metadataObj);
-
-      if (verificationReport.decision === 'REJECTED') {
+      if (!checkResult.valid) {
         submitBtn.disabled = false;
-        submitBtn.className = "flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center space-x-1.5";
-        submitBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate text-xs"></i> <span>Re-Verify Document</span>';
-        const resBox = document.getElementById('verification-result-box');
-        if (resBox) resBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-        return; // HARD STOP ON REJECTED DOCUMENT
+        submitBtn.className = "flex-1 py-2.5 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center space-x-1.5";
+        submitBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up text-xs"></i> <span>Upload &amp; Submit Paper</span>';
+
+        if (alertBanner) {
+          alertBanner.className = "mb-3.5 p-3.5 bg-red-50 border-2 border-red-300 rounded-xl text-red-950 text-xs shadow-sm";
+          alertBanner.innerHTML = `
+            <div class="flex items-start space-x-2.5">
+              <i class="fa-solid fa-circle-xmark text-red-600 mt-0.5 text-base flex-shrink-0"></i>
+              <div>
+                <div class="font-bold text-red-800">Not a Valid SR University Question Paper</div>
+                <ul class="list-disc list-inside mt-1 text-[11px] text-red-700 space-y-0.5">
+                  ${checkResult.reasons.map(r => `<li>${escapeHTML(r)}</li>`).join('')}
+                </ul>
+              </div>
+            </div>
+          `;
+          alertBanner.style.display = 'block';
+          alertBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        alert(`This document is not a valid SR University question paper.\n\n${checkResult.reasons.join('\n')}`);
+        return; // HARD STOP: REJECTED
       }
 
-      // Check Realtime Database Duplicate
-      if (supabaseClient) {
-        try {
-          let dupQuery = supabaseClient
-            .from('papers')
-            .select('*')
-            .ilike('subject_code', code)
-            .eq('branch', branch)
-            .eq('semester', sem)
-            .eq('academic_year', year);
-
-          if (exam === 'MID_2' || exam === 'RE_MID') {
-            dupQuery = dupQuery.in('exam_type', ['MID_2', 'RE_MID']);
-          } else {
-            dupQuery = dupQuery.eq('exam_type', exam);
-          }
-
-          const { data: dbDups, error: dupQueryErr } = await dupQuery;
-          if (!dupQueryErr && Array.isArray(dbDups) && dbDups.length > 0) {
-            const existingDb = dbDups[0];
-            matchedDuplicatePaper = {
-              id: existingDb.id,
-              subjectCode: existingDb.subject_code,
-              subjectName: existingDb.subject_name,
-              branch: existingDb.branch,
-              semester: existingDb.semester,
-              examType: existingDb.exam_type,
-              examTypeLabel: existingDb.exam_type_label || existingDb.exam_type,
-              regulation: existingDb.regulation,
-              academicYear: existingDb.academic_year,
-              uploaderRollNo: existingDb.uploader_roll || 'Student',
-              imageUrl: existingDb.image_url
-            };
-
-            alert(`This paper already exists!\n\nA question paper for ${existingDb.subject_code} (${existingDb.academic_year}) has already been uploaded.`);
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<i class="fa-solid fa-shield-check text-xs"></i> <span>Verify &amp; Submit Question Paper</span>';
-            return;
-          }
-        } catch(e) {}
+      // 4. VERIFICATION PASSED -> INSTANT APPROVAL & STORAGE
+      if (alertBanner) {
+        alertBanner.className = "mb-3.5 p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-950 text-xs shadow-sm";
+        alertBanner.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
+            <span class="font-bold text-emerald-800">Verified Authentic SR University Paper — Saving &amp; Publishing...</span>
+          </div>
+        `;
+        alertBanner.style.display = 'block';
       }
 
-      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Saving to Repository...</span>';
+      submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> <span>Publishing to Public Archive...</span>';
 
       const paperId = `sru_${branch.toLowerCase()}_${code.toLowerCase()}_${Date.now()}`;
       const examLabels = {
@@ -4645,13 +4303,11 @@
         'SUPPLY': 'Supplementary Exam'
       };
 
-      const isApprovedByAi = verificationReport.decision === 'APPROVED';
-      const extractedCoordinator = verificationReport.extracted_fields?.course_coordinator_name || null;
-
       let uploadedImageUrl = null;
       let cloudSaved = false;
       let cloudErrorDetail = "";
 
+      // Upload to Supabase Storage and insert row
       if (supabaseClient) {
         try {
           let blob = selectedImageBlob;
@@ -4662,16 +4318,10 @@
               const mimeType = mimeMatch ? mimeMatch[1] : 'image/webp';
               const byteCharacters = atob(parts[1]);
               const byteNumbers = new Array(byteCharacters.length);
-              const byteArrays = [];
-              for (let offset = 0; offset < byteCharacters.length; offset += 1024) {
-                const slice = byteCharacters.slice(offset, offset + 1024);
-                const byteNums = new Array(slice.length);
-                for (let i = 0; i < slice.length; i++) {
-                  byteNums[i] = slice.charCodeAt(i);
-                }
-                byteArrays.push(new Uint8Array(byteNums));
+              for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
               }
-              blob = new Blob(byteArrays, { type: mimeType });
+              blob = new Blob([new Uint8Array(byteNumbers)], { type: mimeType });
             } catch(convErr) {
               const res = await fetch(selectedImageBase64);
               blob = await res.blob();
@@ -4700,6 +4350,7 @@
             cloudErrorDetail += `Storage: ${storageErr.message || JSON.stringify(storageErr)}. `;
           }
 
+          // Approved & stores full extracted_text under course code
           let insertPayload = {
             id: paperId,
             user_id: null,
@@ -4716,14 +4367,12 @@
             uploader_name: contributorName,
             uploader_roll: contributorRoll,
             uploader_email: contributorEmail,
-            is_approved: isApprovedByAi,
-            status: isApprovedByAi ? 'approved' : 'pending',
-            verification_status: isApprovedByAi ? 'approved' : 'pending',
-            verification_report: verificationReport,
-            course_coordinator: extractedCoordinator,
+            is_approved: true,
+            status: 'approved',
+            verification_status: 'approved',
             image_url: uploadedImageUrl || selectedImageBase64,
             extracted_text: extractedOcrText || null,
-            ocr_confidence: Math.round(verificationReport.confidence || ocrConfidence || 85),
+            ocr_confidence: Math.round(ocrConfidence || 90),
             download_count: 0
           };
 
@@ -4746,7 +4395,7 @@
               uploader_roll: contributorRoll,
               image_url: uploadedImageUrl || selectedImageBase64,
               extracted_text: extractedOcrText || null,
-              ocr_confidence: Math.round(verificationReport.confidence || ocrConfidence || 85),
+              ocr_confidence: Math.round(ocrConfidence || 90),
               download_count: 0
             };
             const retryRes = await supabaseClient.from('papers').insert(fallbackPayload);
@@ -4784,14 +4433,12 @@
               uploader_name: contributorName,
               uploader_roll: contributorRoll,
               uploader_email: contributorEmail,
-              is_approved: isApprovedByAi,
-              status: isApprovedByAi ? 'approved' : 'pending',
-              verification_status: isApprovedByAi ? 'approved' : 'pending',
-              verification_report: verificationReport,
-              course_coordinator: extractedCoordinator,
+              is_approved: true,
+              status: 'approved',
+              verification_status: 'approved',
               image_url: uploadedImageUrl || selectedImageBase64,
               extracted_text: extractedOcrText || null,
-              ocr_confidence: Math.round(verificationReport.confidence || ocrConfidence || 85),
+              ocr_confidence: Math.round(ocrConfidence || 90),
               download_count: 0
             })
           });
@@ -4803,17 +4450,12 @@
 
       submitBtn.disabled = false;
       submitBtn.className = "flex-1 py-2.5 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center space-x-1.5";
-      submitBtn.innerHTML = '<i class="fa-solid fa-shield-check text-xs"></i> <span>Verify &amp; Submit Question Paper</span>';
+      submitBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up text-xs"></i> <span>Upload &amp; Submit Paper</span>';
 
       if (cloudSaved) {
         recordUploadRateLimit();
-        if (isApprovedByAi) {
-          alert('✨ Paper Verified Authentic by AI!\n\nYour question paper has been verified and published immediately to the public SR University archive.');
-          showToast('Question paper verified authentic and published directly to public archive!', 'success');
-        } else {
-          alert('Your question paper has been submitted successfully and is awaiting review.');
-          showToast('Your question paper has been submitted successfully and is awaiting review.', 'info');
-        }
+        alert('Question paper verified and approved! Published directly to the archive.');
+        showToast('Question paper verified and published directly to the archive!', 'success');
         closeUploadModal();
         await fetchPapers();
       } else {

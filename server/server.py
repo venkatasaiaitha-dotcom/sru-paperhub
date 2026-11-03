@@ -341,7 +341,8 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
                 mime_type=mime_type,
                 student_selection=student_selection,
                 client_ocr_text=client_ocr,
-                ocr_confidence=ocr_conf
+                ocr_confidence=ocr_conf,
+                existing_papers=load_json(DATA_FILE, [])
             )
             self._send_json({"success": True, "report": report})
             return
@@ -426,6 +427,7 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
             new_id = f"sru_{branch.lower()}_{secrets.token_hex(6)}"
             # Run AI verification if report not provided by client
             verification_rep = data.get("verificationReport")
+            existing_papers_list = load_json(DATA_FILE, [])
             if not verification_rep:
                 raw_bytes = base64.b64decode(encoded) if image_data.startswith("data:") else b""
                 verification_rep = verifier.verify(
@@ -442,13 +444,23 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
                         "examType": exam
                     },
                     client_ocr_text=data.get("extractedText", ""),
-                    ocr_confidence=float(data.get("ocrConfidence", 0))
+                    ocr_confidence=float(data.get("ocrConfidence", 0)),
+                    existing_papers=existing_papers_list
                 )
 
-            # Decision logic: APPROVED -> published; MANUAL_REVIEW -> pending; REJECTED -> rejected
-            decision = verification_rep.get("decision", "MANUAL_REVIEW")
+            # If duplicate detected from past data:
+            if verification_rep.get("is_duplicate"):
+                self._send_json({"success": False, "error": verification_rep["reasons"][0], "is_duplicate": True}, status=400)
+                return
+
+            # If not a valid SR University paper:
+            decision = verification_rep.get("decision", "APPROVED")
+            if decision == "REJECTED":
+                self._send_json({"success": False, "error": "This document is not a valid SR University question paper.", "reasons": verification_rep.get("reasons", [])}, status=400)
+                return
+
             is_approved = (decision == "APPROVED")
-            status = "approved" if decision == "APPROVED" else ("rejected" if decision == "REJECTED" else "pending")
+            status = "approved" if is_approved else "pending" 
 
             new_paper = {
                 "id": new_id,

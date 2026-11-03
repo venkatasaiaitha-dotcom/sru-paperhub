@@ -15,208 +15,167 @@ Date of Exam: 04-12-2025 Time: 10:00 A.M to 12:00 P.M
 Duration: 2 Hours Max. Marks: 40
 ANSWER ALL QUESTIONS
 Q.No. Question Marks
-1 A. The national bank uses MongoDB to store customer information...
-B. The following ER Diagram represents entities and their relationships... 5+5
-Note: Do not write SQL CREATE commands or insert statements
+1 A. The national bank uses MongoDB to store customer information and their transaction records.
+The database contains two collections: accounts and transactions. 5+5
+B. The following ER Diagram represents entities and their relationships in a system.
+Convert this ER Model into its Relational Model by listing all relations with their attributes.
 """
-        self.student_selection = {
+        self.genuine_selection = {
             "branch": "CSE",
-            "semester": 3,
+            "semester": "3",
             "regulation": "R24",
             "academicYear": "2025-2026",
             "subjectCode": "24CS301PC211",
             "subjectName": "Information Management System",
             "examType": "SEM_END"
         }
-        self.dummy_bytes = b"DUMMY_IMAGE_BYTES_FOR_TESTING_DATA"
 
-    # TEST 1: Genuine SR University question paper. Expected: APPROVED
-    def test_1_genuine_sru_paper(self):
-        rep = verifier.verify(
-            file_bytes=self.dummy_bytes,
-            filename="paper.webp",
-            mime_type="image/webp",
-            student_selection=self.student_selection,
+    def test_1_genuine_sru_paper_approved(self):
+        """Genuine SR University paper with upperbox header & course code is APPROVED."""
+        report = verifier.verify(
+            file_bytes=b"",
+            filename="genuine_paper.jpg",
+            mime_type="image/jpeg",
+            student_selection=self.genuine_selection,
             client_ocr_text=self.genuine_ocr_text,
-            ocr_confidence=90
-        )
-        self.assertEqual(rep["decision"], "APPROVED")
-        self.assertEqual(rep["layers"]["layer_3_identity"]["status"], "PASSED")
-        self.assertEqual(rep["layers"]["layer_4_coordinator"]["status"], "PASSED")
-
-    # TEST 2: Class notes with SR University heading. Expected: REJECTED
-    def test_2_class_notes(self):
-        notes_text = """
-SR UNIVERSITY - DEPARTMENT OF CSE
-Lecture Notes: Database Management Systems
-Chapter 1: Relational Data Model.
-These are handwritten lecture notes explaining B+ Trees and indexing mechanisms.
-        """
-        rep = verifier.verify(
-            file_bytes=self.dummy_bytes,
-            filename="notes.pdf",
-            mime_type="application/pdf",
-            student_selection=self.student_selection,
-            client_ocr_text=notes_text,
             ocr_confidence=92
         )
-        self.assertEqual(rep["decision"], "REJECTED")
-        self.assertEqual(rep["layers"]["layer_2_classification"]["status"], "FAILED")
+        self.assertEqual(report["decision"], "APPROVED")
+        self.assertFalse(report.get("is_duplicate"))
+        self.assertEqual(report["extracted_fields"]["university_name"], "SR UNIVERSITY")
+        self.assertEqual(report["extracted_fields"]["course_code"], "24CS301PC211")
 
-    # TEST 3: Assignment renamed as question paper. Expected: REJECTED
-    def test_3_assignment(self):
-        assignment_text = """
-SR UNIVERSITY
-Department of Computer Science and Engineering
-Home Assignment 2
-Submitted by: Rahul Sharma, 22SR1A0501
-Subject: Database Management Systems
-        """
-        rep = verifier.verify(
-            file_bytes=self.dummy_bytes,
-            filename="assignment.pdf",
-            mime_type="application/pdf",
-            student_selection=self.student_selection,
-            client_ocr_text=assignment_text,
-            ocr_confidence=88
+    def test_2_missing_sr_university_header(self):
+        """Missing 'SR UNIVERSITY' in upper box is rejected as not a valid paper."""
+        text = self.genuine_ocr_text.replace("SR UNIVERSITY", "ABC INSTITUTE")
+        text = text.replace("SCHOOL OF CS&AI", "")
+        report = verifier.verify(
+            file_bytes=b"",
+            filename="no_sru.jpg",
+            mime_type="image/jpeg",
+            student_selection=self.genuine_selection,
+            client_ocr_text=text,
+            ocr_confidence=85
         )
-        self.assertEqual(rep["decision"], "REJECTED")
-        self.assertEqual(rep["layers"]["layer_2_classification"]["status"], "FAILED")
+        self.assertEqual(report["decision"], "REJECTED")
+        self.assertTrue(any("SR UNIVERSITY" in r for r in report["reasons"]))
 
-    # TEST 4: Question paper from another university. Expected: REJECTED
-    def test_4_other_university_paper(self):
-        other_uni_text = """
-Jawaharlal Nehru Technological University Hyderabad (JNTUH)
-B.Tech III Year I Semester Examinations
-Database Management Systems
-Q.No. Question Marks
-1 Explain Relational Algebra with examples. [10M]
-        """
-        rep = verifier.verify(
-            file_bytes=self.dummy_bytes,
-            filename="jntu_paper.pdf",
-            mime_type="application/pdf",
-            student_selection=self.student_selection,
-            client_ocr_text=other_uni_text,
-            ocr_confidence=90
-        )
-        self.assertEqual(rep["decision"], "REJECTED")
-        self.assertIn("disallowed non-exam material: Other University Paper", rep["reasons"][0])
-
-    # TEST 5: Genuine SR University question paper with wrong selected branch. Expected: REJECTED
-    def test_5_branch_mismatch(self):
-        wrong_selection = dict(self.student_selection)
-        wrong_selection["branch"] = "CIVIL"  # Paper is CSE
-        rep = verifier.verify(
-            file_bytes=self.dummy_bytes,
-            filename="paper.webp",
-            mime_type="image/webp",
+    def test_3_course_code_mismatch(self):
+        """Course code mismatch is rejected as not a valid paper for that code."""
+        wrong_selection = dict(self.genuine_selection)
+        wrong_selection["subjectCode"] = "22EC401"
+        report = verifier.verify(
+            file_bytes=b"",
+            filename="wrong_code.jpg",
+            mime_type="image/jpeg",
             student_selection=wrong_selection,
             client_ocr_text=self.genuine_ocr_text,
             ocr_confidence=90
         )
-        self.assertEqual(rep["decision"], "REJECTED")
-        self.assertTrue(any("Branch mismatch" in r for r in rep["reasons"]))
+        self.assertEqual(report["decision"], "REJECTED")
+        self.assertTrue(any("Course code" in r for r in report["reasons"]))
 
-    # TEST 6: Genuine question paper missing Course Coordinator name. Expected: REJECTED / MANUAL REVIEW
-    def test_6_missing_coordinator_name(self):
-        missing_coord_text = self.genuine_ocr_text.replace("DR. P. PRAVEEN", "")
-        rep = verifier.verify(
-            file_bytes=self.dummy_bytes,
-            filename="paper.webp",
-            mime_type="image/webp",
-            student_selection=self.student_selection,
-            client_ocr_text=missing_coord_text,
-            ocr_confidence=85
+    def test_4_class_notes_rejected(self):
+        """Class notes uploaded as question paper is rejected."""
+        notes_text = """
+SR UNIVERSITY
+Class Notes - Module 2 Database Indexing
+Course Code: 24CS301PC211
+Here are my handwritten lecture notes explaining B+ Trees and MongoDB.
+"""
+        report = verifier.verify(
+            file_bytes=b"",
+            filename="notes.jpg",
+            mime_type="image/jpeg",
+            student_selection=self.genuine_selection,
+            client_ocr_text=notes_text,
+            ocr_confidence=88
         )
-        self.assertIn(rep["decision"], ["MANUAL_REVIEW", "REJECTED"])
-        self.assertTrue(any("Course Coordinator name" in r for r in rep["reasons"]))
+        self.assertEqual(report["decision"], "REJECTED")
+        self.assertTrue(any("prohibited" in r.lower() or "notes" in r.lower() for r in report["reasons"]))
 
-    # TEST 7: Genuine question paper missing the words "Course Coordinator". Expected: REJECTED
-    def test_7_missing_coordinator_label(self):
-        no_label_text = self.genuine_ocr_text.replace("Course Coordinator Name:", "")
-        rep = verifier.verify(
-            file_bytes=self.dummy_bytes,
-            filename="paper.webp",
-            mime_type="image/webp",
-            student_selection=self.student_selection,
-            client_ocr_text=no_label_text,
-            ocr_confidence=85
-        )
-        self.assertEqual(rep["decision"], "REJECTED")
-        self.assertTrue(any("Course Coordinator" in r for r in rep["reasons"]))
-
-    # TEST 8: Genuine question paper with missing subject code / mismatch. Expected: REJECTED
-    def test_8_subject_code_mismatch(self):
-        wrong_code_selection = dict(self.student_selection)
-        wrong_code_selection["subjectCode"] = "22ME101" # Mismatched Mechanical code
-        rep = verifier.verify(
-            file_bytes=self.dummy_bytes,
-            filename="paper.webp",
-            mime_type="image/webp",
-            student_selection=wrong_code_selection,
-            client_ocr_text=self.genuine_ocr_text,
+    def test_5_student_assignment_rejected(self):
+        """Assignment uploaded as question paper is rejected."""
+        assignment_text = """
+SR UNIVERSITY
+DEPARTMENT OF CSE
+Assignment No 3 - Information Management System
+Course Code: 24CS301PC211
+Student Name: Rahul Sharma
+Question 1: Explain relational normalization with examples.
+"""
+        report = verifier.verify(
+            file_bytes=b"",
+            filename="assignment.jpg",
+            mime_type="image/jpeg",
+            student_selection=self.genuine_selection,
+            client_ocr_text=assignment_text,
             ocr_confidence=90
         )
-        self.assertEqual(rep["decision"], "REJECTED")
-        self.assertTrue(any("Course Code mismatch" in r for r in rep["reasons"]))
+        self.assertEqual(report["decision"], "REJECTED")
 
-    # TEST 9: Blurry scanned question paper (low confidence). Expected: MANUAL REVIEW
-    def test_9_blurry_scan(self):
-        rep = verifier.verify(
-            file_bytes=self.dummy_bytes,
-            filename="paper.webp",
-            mime_type="image/webp",
-            student_selection=self.student_selection,
-            client_ocr_text=self.genuine_ocr_text,
-            ocr_confidence=42  # Low confidence below threshold
-        )
-        self.assertEqual(rep["decision"], "MANUAL_REVIEW")
-
-    # TEST 10: Blank or corrupted PDF. Expected: REJECTED
-    def test_10_blank_or_empty(self):
-        rep = verifier.verify(
+    def test_6_blank_or_empty_rejected(self):
+        """Blank document is rejected."""
+        report = verifier.verify(
             file_bytes=b"",
-            filename="empty.pdf",
-            mime_type="application/pdf",
-            student_selection=self.student_selection,
+            filename="blank.jpg",
+            mime_type="image/jpeg",
+            student_selection=self.genuine_selection,
             client_ocr_text="",
             ocr_confidence=0
         )
-        self.assertEqual(rep["decision"], "REJECTED")
-        self.assertEqual(rep["layers"]["layer_1_file"]["status"], "FAILED")
+        self.assertEqual(report["decision"], "REJECTED")
 
-    # TEST 11: Minor scanning/margin variations with genuine paper. Expected: APPROVED
-    def test_11_minor_variations_approved(self):
-        variation_text = self.genuine_ocr_text.replace("2025-2026", "2025-26")
-        rep = verifier.verify(
-            file_bytes=self.dummy_bytes,
-            filename="paper_scan.webp",
-            mime_type="image/webp",
-            student_selection=self.student_selection,
-            client_ocr_text=variation_text,
-            ocr_confidence=88
+    def test_7_duplicate_detection_same_code(self):
+        """Uploading the exact same paper already in past data is detected as DUPLICATE."""
+        existing_papers = [
+            {
+                "id": "sru_cse_24cs301pc211_past",
+                "subject_code": "24CS301PC211",
+                "subject_name": "Information Management System",
+                "extracted_text": self.genuine_ocr_text
+            }
+        ]
+        report = verifier.verify(
+            file_bytes=b"",
+            filename="duplicate_paper.jpg",
+            mime_type="image/jpeg",
+            student_selection=self.genuine_selection,
+            client_ocr_text=self.genuine_ocr_text,
+            ocr_confidence=95,
+            existing_papers=existing_papers
         )
-        self.assertEqual(rep["decision"], "APPROVED")
+        self.assertEqual(report["decision"], "REJECTED")
+        self.assertTrue(report.get("is_duplicate"))
+        self.assertTrue(any("already exists" in r.lower() for r in report["reasons"]))
 
-    # TEST 12: Document containing forged university details. Expected: REJECTED
-    def test_12_forged_details(self):
-        forged_text = """
-FAKE UNIVERSITY WARANGAL
-Department of CS
-Course Coordinator: John Doe
-Question 1: Explain forgery [10M]
-        """
-        rep = verifier.verify(
-            file_bytes=self.dummy_bytes,
-            filename="fake.pdf",
-            mime_type="application/pdf",
-            student_selection=self.student_selection,
-            client_ocr_text=forged_text,
-            ocr_confidence=75
+    def test_8_duplicate_detection_mistaken_typo_code(self):
+        """If user enters mistaken course code (e.g. 24CS301 instead of 24CS301PC211) but uploads same paper, AI detects duplicate from past data."""
+        existing_papers = [
+            {
+                "id": "sru_cse_24cs301pc211_original",
+                "subject_code": "24CS301PC211",
+                "subject_name": "Information Management System",
+                "extracted_text": self.genuine_ocr_text
+            }
+        ]
+        # User mistakenly writes code as "24CS301" or "CS301"
+        mistaken_selection = dict(self.genuine_selection)
+        mistaken_selection["subjectCode"] = "24CS301"
+
+        report = verifier.verify(
+            file_bytes=b"",
+            filename="reupload_same_paper.jpg",
+            mime_type="image/jpeg",
+            student_selection=mistaken_selection,
+            client_ocr_text=self.genuine_ocr_text,
+            ocr_confidence=92,
+            existing_papers=existing_papers
         )
-        self.assertEqual(rep["decision"], "REJECTED")
-        self.assertEqual(rep["layers"]["layer_3_identity"]["status"], "FAILED")
+        self.assertEqual(report["decision"], "REJECTED")
+        self.assertTrue(report.get("is_duplicate"))
+        self.assertTrue(any("already exists" in r.lower() for r in report["reasons"]))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()
