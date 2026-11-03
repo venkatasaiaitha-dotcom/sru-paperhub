@@ -1,6 +1,8 @@
 # SR University PaperHub - Verification & Server Dependencies
 # Standard Library powers base HTTP server.
-# Optional high-performance document parsing & geometry engines:
+# Multimodal AI Document Intelligence:
+google-genai>=2.0.0
+
+# Document parsing & geometry engines:
 pymupdf>=1.24.0
 pillow>=10.0.0
-

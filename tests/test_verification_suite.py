@@ -1,5 +1,9 @@
 import unittest
-from server.verifier import verifier
+from unittest.mock import patch
+from io import BytesIO
+from PIL import Image
+from server.verifier import verifier, VerificationEngine
+
 
 class TestVerificationSuite(unittest.TestCase):
     def setUp(self):
@@ -175,6 +179,98 @@ Question 1: Explain relational normalization with examples.
         self.assertEqual(report["decision"], "REJECTED")
         self.assertTrue(report.get("is_duplicate"))
         self.assertTrue(any("already exists" in r.lower() for r in report["reasons"]))
+
+    @patch.object(VerificationEngine, 'gemini_verify')
+    def test_9_gemini_multimodal_approved(self, mock_gemini):
+        """Gemini multimodal verification correctly detects SR University paper and approves."""
+        mock_gemini.return_value = {
+            "is_sr_university": True,
+            "has_upperbox_sr_header": True,
+            "document_type": "QUESTION_PAPER",
+            "course_code": "24CS301PC211",
+            "subject_name": "Information Management System",
+            "regulation": "R24",
+            "academic_year": "2025-2026",
+            "course_coordinator": "DR. P. PRAVEEN",
+            "confidence": 98,
+            "extracted_text_summary": "MongoDB question and ER Diagram conversion problem.",
+            "reason": "Authentic SR University end term question paper."
+        }
+
+        # Create standard A4 image (aspect ratio ~1.41)
+        img = Image.new("RGB", (700, 990), color="white")
+        buf = BytesIO()
+        img.save(buf, format="JPEG")
+        raw_bytes = buf.getvalue()
+
+        report = verifier.verify(
+            file_bytes=raw_bytes,
+            filename="sru_exam.jpg",
+            mime_type="image/jpeg",
+            student_selection=self.genuine_selection,
+            client_ocr_text=self.genuine_ocr_text,
+            ocr_confidence=95
+        )
+        self.assertEqual(report["decision"], "APPROVED")
+        self.assertEqual(report["engine"], "gemini-api+local")
+        self.assertEqual(report["extracted_fields"]["course_code"], "24CS301PC211")
+        self.assertEqual(report["confidence"], 98)
+
+    @patch.object(VerificationEngine, 'gemini_verify')
+    def test_10_gemini_classifies_other_university_rejected(self, mock_gemini):
+        """When Gemini classifies the document as another university, it is rejected."""
+        mock_gemini.return_value = {
+            "is_sr_university": False,
+            "has_upperbox_sr_header": False,
+            "document_type": "OTHER_UNIVERSITY",
+            "course_code": "JNTU502",
+            "confidence": 94,
+            "reason": "Document has JNTU Hyderabad header."
+        }
+        report = verifier.verify(
+            file_bytes=b"dummy_bytes",
+            filename="jntu.jpg",
+            mime_type="image/jpeg",
+            student_selection=self.genuine_selection,
+            client_ocr_text="JNTU EXAM PAPER",
+            ocr_confidence=80
+        )
+        self.assertEqual(report["decision"], "REJECTED")
+        self.assertTrue(any("Other University" in r or "prohibited" in r.lower() for r in report["reasons"]))
+
+    @patch.object(VerificationEngine, 'gemini_verify')
+    def test_11_gemini_fallback_on_api_error(self, mock_gemini):
+        """When Gemini API call encounters an error or returns None, it gracefully falls back to local engine."""
+        mock_gemini.return_value = None  # Simulating fallback
+
+        report = verifier.verify(
+            file_bytes=b"",
+            filename="fallback_test.jpg",
+            mime_type="image/jpeg",
+            student_selection=self.genuine_selection,
+            client_ocr_text=self.genuine_ocr_text,
+            ocr_confidence=91
+        )
+        self.assertEqual(report["decision"], "APPROVED")
+        self.assertEqual(report["engine"], "local-multi-engine")
+
+    def test_12_non_a4_geometry_rejected(self):
+        """Extreme non-A4 geometry (e.g. 1000x200 banner, aspect ratio 5.0) is rejected."""
+        img = Image.new("RGB", (1000, 200), color="white")
+        buf = BytesIO()
+        img.save(buf, format="JPEG")
+        raw_bytes = buf.getvalue()
+
+        report = verifier.verify(
+            file_bytes=raw_bytes,
+            filename="banner.jpg",
+            mime_type="image/jpeg",
+            student_selection=self.genuine_selection,
+            client_ocr_text=self.genuine_ocr_text,
+            ocr_confidence=90
+        )
+        self.assertEqual(report["decision"], "REJECTED")
+        self.assertTrue(any("A4 paper layout" in r for r in report["reasons"]))
 
 
 if __name__ == "__main__":

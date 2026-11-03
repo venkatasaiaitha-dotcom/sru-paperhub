@@ -37,14 +37,17 @@ def check_rate_limit(ip, store, max_requests=5, window_sec=600):
     store[ip] = timestamps
     return True, 0
 
-def load_feedbacks():
+def load_json(filepath, default=None):
     try:
-        if os.path.exists(FEEDBACK_FILE):
-            with open(FEEDBACK_FILE, "r", encoding="utf-8") as f:
+        if os.path.exists(filepath):
+            with open(filepath, "r", encoding="utf-8") as f:
                 return json.load(f)
-    except Exception:
-        pass
-    return []
+    except Exception as e:
+        print(f"Error reading {filepath}:", e)
+    return default if default is not None else []
+
+def load_feedbacks():
+    return load_json(FEEDBACK_FILE, [])
 
 def save_feedbacks(feedbacks):
     try:
@@ -68,13 +71,7 @@ ALLOWED_MIME_TYPES = {
 }
 
 def load_papers():
-    try:
-        if os.path.exists(DATA_FILE):
-            with open(DATA_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-    except Exception as e:
-        print("Error reading papers file:", e)
-    return []
+    return load_json(DATA_FILE, [])
 
 def save_papers(papers):
     try:
@@ -483,6 +480,8 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
                 "downloadCount": 0,
                 "is_approved": is_approved,
                 "status": status,
+                "extracted_text": verification_rep.get("extracted_text", "") or data.get("extractedText", ""),
+                "extractedText": verification_rep.get("extracted_text", "") or data.get("extractedText", ""),
                 "verification_report": verification_rep,
                 "course_coordinator": verification_rep.get("course_coordinator_name", "UNVERIFIED"),
                 "created_at": int(time.time())
