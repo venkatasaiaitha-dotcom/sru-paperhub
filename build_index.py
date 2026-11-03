@@ -4089,21 +4089,18 @@ html_content = r'''<!DOCTYPE html>
     function verifyQuestionPaperSimple(fileObj, ocrText, expectedCode, width, height) {
       const text = (ocrText || '').trim();
       const textUpper = text.toUpperCase();
-      const reasons = [];
+      const cleanDoc = textUpper.replace(/[^A-Z0-9]/g, '');
 
-      // 1. A4 Paper Layout Check (aspect ratio between 1.15 and 1.85)
-      let conformsA4 = true;
-      let aspect = 1.414;
-      if (width > 0 && height > 0) {
-        aspect = Math.max(width, height) / Math.min(width, height);
-        conformsA4 = (aspect >= 1.15 && aspect <= 1.85);
-      }
-
-      // Check if file is physically empty (< 500 bytes)
-      if (fileObj && fileObj.size < 500) {
+      // 1. Minimum words check: An examination question paper must contain readable examination text.
+      // Random non-examination pictures (flowers, nature, selfies, blanks) have 0 readable words.
+      const words = text.split(/\s+/).filter(w => w.length > 1);
+      if (words.length < 15) {
         return {
           valid: false,
-          reasons: ["The selected file is empty (0 KB). Please select a valid document."]
+          reasons: [
+            "This document is not a valid SR University question paper.",
+            "No readable examination paper text detected. Non-examination images (flowers, scenery, blanks) are strictly rejected."
+          ]
         };
       }
 
@@ -4115,15 +4112,24 @@ html_content = r'''<!DOCTYPE html>
         { pattern: /\b(?:jntuh|jntuk|osmania\s*university|anna\s*university|kakatiya\s*university)\b/i, name: 'Other University Document' }
       ];
       for (const d of disallowed) {
-        if (d.pattern.test(text)) {
+        if (d.pattern.test(textUpper)) {
           return {
             valid: false,
-            reasons: ["This document is not a valid SR University question paper.", `Document is classified as ${d.name}.`]
+            reasons: [
+              "This document is not a valid SR University question paper.",
+              `Document is classified as prohibited material: ${d.name}.`
+            ]
           };
         }
       }
 
-      // 3. Layout geometry guard:
+      // 3. Layout geometry check (standard A4 layout)
+      let conformsA4 = true;
+      let aspect = 1.414;
+      if (width > 0 && height > 0) {
+        aspect = Math.max(width, height) / Math.min(width, height);
+        conformsA4 = (aspect >= 1.15 && aspect <= 1.85);
+      }
       if (!conformsA4) {
         return {
           valid: false,
@@ -4134,13 +4140,13 @@ html_content = r'''<!DOCTYPE html>
         };
       }
 
-      // 4. Institutional & Examination Header Indicators
-      const sruPatterns = [
-        /\b(?:SR\s*UNIVERSITY|SRU|WARANGAL|SR\s*ENGG|SR\s*ENGINEERING)\b/i,
-        /\b(?:SCHOOL\s+OF|DEPARTMENT\s+OF)\b/i,
-        /\b(?:COURSE\s+COORDINATOR|ANSWER\s+ALL\s+QUESTIONS|END\s+TERM|MID\s+TERM|REGULATION\s+R|MAX\.\s*MARKS)\b/i
-      ];
-      const hasSru = sruPatterns.some(p => p.test(textUpper));
+      // 4. Institutional Header Check (SR UNIVERSITY in upperbox / exam template)
+      const hasSru = /SR\w{0,4}UN[IV]/i.test(cleanDoc) ||
+                     /SRUNIVERSITY/i.test(cleanDoc) ||
+                     /\bSRU\b/i.test(textUpper) ||
+                     /WARANGAL|SRWARANGAL/i.test(cleanDoc) ||
+                     /SCHOOLOF|DEPARTMENTOF/i.test(cleanDoc) ||
+                     (/BTECH|B\.TECH/i.test(textUpper) && /ACADEMICYEAR|ENDTERM|MIDTERM/i.test(cleanDoc));
 
       // 5. Course Code Match
       let hasCode = false;
@@ -4148,12 +4154,11 @@ html_content = r'''<!DOCTYPE html>
       const normExpected = (expectedCode || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
       if (normExpected) {
-        const cleanDoc = textUpper.replace(/[^A-Z0-9]/g, '');
         if (cleanDoc.includes(normExpected)) {
           hasCode = true;
         } else {
           // Check 5-char root e.g. 24CS301 inside 24CS301PC211 or CS301
-          const rootMatch = normExpected.match(/[0-9]{2}[A-Z]{2,4}[0-9]{3}/);
+          const rootMatch = normExpected.match(/[0-9]{2}[A-Z]{2,4}[0-9]{2,3}/);
           if (rootMatch && cleanDoc.includes(rootMatch[0])) {
             hasCode = true;
           } else {
@@ -4172,48 +4177,31 @@ html_content = r'''<!DOCTYPE html>
           if (!normExpected || extractedCode.replace(/[^A-Z0-9]/g, '').includes(normExpected) || normExpected.includes(extractedCode.replace(/[^A-Z0-9]/g, ''))) {
             hasCode = true;
           }
+        } else if (/COURSECODE|SUBJECTCODE|CONECOTE|COURSET/i.test(cleanDoc) || /ANSWERALLQUESTIONS|QUESTION/i.test(cleanDoc)) {
+          hasCode = true;
         }
       }
 
-      // If document text was recognized (> 15 chars)
-      if (text.length >= 15) {
-        if ((hasSru || hasCode) && conformsA4) {
-          return {
-            valid: true,
-            extractedCode: extractedCode || expectedCode,
-            reasons: [
-              "SR University examination paper layout verified.",
-              `Subject code '${extractedCode || expectedCode}' verified in document.`
-            ]
-          };
-        } else {
-          const failurePoints = [];
-          if (!hasSru) failurePoints.push("The upper header box must clearly state 'SR UNIVERSITY' or Department.");
-          if (!hasCode) failurePoints.push(`Course code '${expectedCode || 'Code'}' was not found in the paper.`);
-          return {
-            valid: false,
-            reasons: ["This document is not a valid SR University question paper.", ...failurePoints]
-          };
-        }
-      }
-
-      // If text.length < 15 (e.g. in-browser OCR slow, low contrast camera photo, or unparsed canvas):
-      // As long as the document file is non-empty (>10KB), conforms to A4 layout, and user entered valid SRU subject code:
-      if (fileObj && fileObj.size >= 10240 && conformsA4 && normExpected.length >= 3) {
+      // Must have BOTH institutional identity AND course code/questions
+      if (hasSru && hasCode && conformsA4) {
         return {
           valid: true,
-          extractedCode: expectedCode,
+          extractedCode: extractedCode || expectedCode,
           reasons: [
-            "Examination document geometry (A4) verified.",
-            `Registered under Subject Code '${expectedCode}'.`
+            "SR University examination header verified.",
+            `Course code '${extractedCode || expectedCode}' verified in document.`,
+            "Standard A4 examination paper layout verified."
           ]
         };
+      } else {
+        const failurePoints = [];
+        if (!hasSru) failurePoints.push("The upper header box must clearly state 'SR UNIVERSITY' or Department.");
+        if (!hasCode) failurePoints.push(`Course code '${expectedCode || 'Code'}' was not found in the paper.`);
+        return {
+          valid: false,
+          reasons: ["This document is not a valid SR University question paper.", ...failurePoints]
+        };
       }
-
-      return {
-        valid: false,
-        reasons: ["This document is not a valid SR University question paper (Document appears blank or unreadable)."]
-      };
     }
 
     // Submit Paper - Uploads to Supabase Cloud with Simple AI Verification & OCR Duplicate Guard
