@@ -273,5 +273,23 @@ Question 1: Explain relational normalization with examples.
         self.assertTrue(any("A4 paper layout" in r for r in report["reasons"]))
 
 
+    def test_13_flower_or_scenery_photo_strictly_rejected(self):
+        """Vibrant colorful images like flowers, wallpapers, or nature are strictly rejected."""
+        img = Image.new('RGB', (700, 990), color=(255, 140, 0))
+        buf = BytesIO()
+        img.save(buf, format='JPEG')
+        raw_bytes = buf.getvalue()
+
+        report = verifier.verify(
+            file_bytes=raw_bytes,
+            filename='flower.jpg',
+            mime_type='image/jpeg',
+            student_selection=self.genuine_selection,
+            client_ocr_text='',
+            ocr_confidence=0
+        )
+        self.assertEqual(report['decision'], 'REJECTED')
+        self.assertTrue(any('excessive vibrant color' in r.lower() or 'flowers' in r.lower() for r in report['reasons']))
+
 if __name__ == "__main__":
     unittest.main()

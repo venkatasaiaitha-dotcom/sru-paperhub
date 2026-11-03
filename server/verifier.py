@@ -263,6 +263,25 @@ class VerificationEngine:
 
         return True, aspect_ratio, is_portrait
 
+    def check_image_color_saturation(self, file_bytes, mime_type):
+        """
+        Calculates color saturation percentage for image uploads.
+        Exam papers are monochrome (< 10% color). Flower/scenery/photo uploads have > 30% colorful pixels.
+        """
+        if not file_bytes or len(file_bytes) < 100 or ("image" not in (mime_type or "").lower()):
+            return False, 0.0
+        try:
+            img = Image.open(BytesIO(file_bytes)).convert("RGB")
+            # Downsample for fast check
+            sample = img.resize((120, max(int(120 * img.height / img.width), 10)))
+            pixels = [sample.getpixel((x, y)) for y in range(sample.height) for x in range(sample.width)]
+            total = len(pixels)
+            colorful = sum(1 for r, g, b in pixels if max(r, g, b) - min(r, g, b) > 30)
+            ratio = (colorful / total) * 100
+            return ratio > 16.0, ratio
+        except Exception:
+            return False, 0.0
+
     def check_upperbox_sr_university(self, text):
         """
         Checks for 'SR UNIVERSITY' in upperbox / institutional header.
@@ -343,6 +362,25 @@ class VerificationEngine:
         student_selection = student_selection or {}
         reasons = []
         engine_mode = "local-multi-engine"
+
+        # 0. Check excessive color saturation (rejects flower photos, scenery, nature, selfies)
+        is_colorful, color_ratio = self.check_image_color_saturation(file_bytes, mime_type)
+        if is_colorful:
+            return {
+                "decision": "REJECTED",
+                "is_duplicate": False,
+                "confidence": 0,
+                "reasons": [
+                    "This document is not a valid SR University question paper.",
+                    "Document contains excessive vibrant color. Non-examination photos (flowers, scenery, selfies, nature) are strictly rejected."
+                ],
+                "extracted_fields": {
+                    "university_name": "UNVERIFIED",
+                    "course_code": "UNVERIFIED"
+                },
+                "extracted_text": "",
+                "engine": engine_mode
+            }
 
         # 1. Extract vector text if PDF, otherwise use client_ocr_text
         doc_text = client_ocr_text or ""
