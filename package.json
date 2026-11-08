@@ -17,6 +17,7 @@
   "author": "SR University Student Developers",
   "license": "MIT",
   "dependencies": {
+    "puppeteer-core": "^25.16.0",
     "tesseract.js": "^7.0.0"
   }
 }

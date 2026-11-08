@@ -2737,19 +2737,10 @@ html_content = r'''<!DOCTYPE html>
       // Channel 1: Supabase JS Client SDK (Resilient Query with Legacy Fallback)
       if (supabaseClient) {
         try {
-          let query = supabaseClient.from('papers').select('*').order('created_at', { ascending: false });
-          if (!isAdmin) {
-            query = query.or('is_approved.eq.true,status.eq.approved,status.is.null');
-          }
-          let { data, error } = await query;
-
-          // If is_approved column doesn't exist yet in Supabase, gracefully fallback to select('*')
-          if (error && (error.code === '42703' || (error.message && error.message.includes('is_approved')))) {
-            console.warn('is_approved column not found in database, retrieving existing archive papers:', error.message);
-            const fallbackRes = await supabaseClient.from('papers').select('*').order('created_at', { ascending: false });
-            data = fallbackRes.data;
-            error = fallbackRes.error;
-          }
+          let { data, error } = await supabaseClient
+            .from('papers')
+            .select('*')
+            .order('created_at', { ascending: false });
 
           if (!error && Array.isArray(data)) {
             papersList = data.map(mapPaperRow);
@@ -3571,16 +3562,10 @@ html_content = r'''<!DOCTYPE html>
       if (!code || code.length < 2) {
         matchedDuplicatePaper = null;
         if (warningBox) warningBox.style.display = 'none';
-        if (submitBtn && submitBtn.disabled && submitBtn.dataset.duplicateLocked === 'true') {
-          submitBtn.disabled = false;
-          submitBtn.dataset.duplicateLocked = 'false';
-          submitBtn.className = "w-full py-2.5 px-4 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center space-x-1.5";
-          submitBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up text-xs"></i> <span>Upload &amp; Publish Paper</span>';
-        }
         return null;
       }
 
-      // 1. Check Exact Subject Code + Branch + Semester + Exam Type + Academic Year (MID_2 and RE_MID equated)
+      // Check Exact Subject Code + Branch + Semester + Exam Type + Academic Year
       const exactMatch = papersList.find(p => {
         const isExamMatch = (p.examType === exam) || 
           ((exam === 'MID_2' || exam === 'RE_MID') && (p.examType === 'MID_2' || p.examType === 'RE_MID'));
@@ -3594,50 +3579,14 @@ html_content = r'''<!DOCTYPE html>
       if (exactMatch) {
         matchedDuplicatePaper = exactMatch;
         if (warningText) {
-          warningText.innerHTML = `⛔ <strong>This paper already exists!</strong><br>A question paper for <strong>${escapeHTML(exactMatch.subjectCode)} - ${escapeHTML(exactMatch.subjectName)}</strong> (${escapeHTML(exactMatch.branch)}, Sem ${escapeHTML(exactMatch.semester)}, ${escapeHTML(exactMatch.examTypeLabel || exactMatch.examType)}, AY ${escapeHTML(exactMatch.academicYear)}) was already uploaded by <strong>${escapeHTML(exactMatch.uploaderRollNo || 'Student')}</strong>.`;
+          warningText.innerHTML = `⚠️ <strong>Note:</strong> A question paper for <strong>${escapeHTML(exactMatch.subjectCode)} - ${escapeHTML(exactMatch.subjectName)}</strong> (${escapeHTML(exactMatch.branch)}, Sem ${escapeHTML(exactMatch.semester)}, ${escapeHTML(exactMatch.examTypeLabel || exactMatch.examType)}, AY ${escapeHTML(exactMatch.academicYear)}) is already in the repository. If this is a clearer or revised scan, you may still upload it.`;
         }
         if (warningBox) warningBox.style.display = 'block';
-        if (submitBtn) {
-          submitBtn.disabled = true;
-          submitBtn.dataset.duplicateLocked = 'true';
-          submitBtn.className = "w-full py-2.5 px-4 bg-red-100 text-red-700 border border-red-300 rounded-xl text-xs font-bold cursor-not-allowed flex items-center justify-center space-x-1.5";
-          submitBtn.innerHTML = '<i class="fa-solid fa-ban text-xs text-red-600"></i> <span>This Paper Already Exists (Upload Blocked)</span>';
-        }
         return exactMatch;
-      }
-
-      // 2. Check Subject Code + Exam Type + Academic Year
-      const partialMatch = papersList.find(p => {
-        const isExamMatch = (p.examType === exam) || 
-          ((exam === 'MID_2' || exam === 'RE_MID') && (p.examType === 'MID_2' || p.examType === 'RE_MID'));
-        return (p.subjectCode || '').toUpperCase() === code &&
-          p.academicYear === year &&
-          isExamMatch;
-      });
-
-      if (partialMatch) {
-        matchedDuplicatePaper = partialMatch;
-        if (warningText) {
-          warningText.innerHTML = `⛔ <strong>This paper already exists!</strong><br>A question paper for <strong>${escapeHTML(partialMatch.subjectCode)}</strong> (${escapeHTML(partialMatch.examTypeLabel || partialMatch.examType)}, AY ${escapeHTML(partialMatch.academicYear)}) is already in the archive. Duplicate uploads are not permitted.`;
-        }
-        if (warningBox) warningBox.style.display = 'block';
-        if (submitBtn) {
-          submitBtn.disabled = true;
-          submitBtn.dataset.duplicateLocked = 'true';
-          submitBtn.className = "w-full py-2.5 px-4 bg-red-100 text-red-700 border border-red-300 rounded-xl text-xs font-bold cursor-not-allowed flex items-center justify-center space-x-1.5";
-          submitBtn.innerHTML = '<i class="fa-solid fa-ban text-xs text-red-600"></i> <span>This Paper Already Exists (Upload Blocked)</span>';
-        }
-        return partialMatch;
       }
 
       matchedDuplicatePaper = null;
       if (warningBox) warningBox.style.display = 'none';
-      if (submitBtn && submitBtn.dataset.duplicateLocked === 'true') {
-        submitBtn.disabled = false;
-        submitBtn.dataset.duplicateLocked = 'false';
-        submitBtn.className = "w-full py-2.5 px-4 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center space-x-1.5";
-        submitBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up text-xs"></i> <span>Upload &amp; Publish Paper</span>';
-      }
       return null;
     }
 
@@ -3775,7 +3724,7 @@ html_content = r'''<!DOCTYPE html>
           const similarity = matchCount / Math.max(minLen, 1);
 
           // If content similarity >= 35% or more than 10 distinctive question words match
-          if (similarity >= 0.35 && matchCount >= 10) {
+          if (similarity >= 0.75 && matchCount >= 16) {
             matchedDuplicatePaper = p;
             const warningBox = document.getElementById('duplicate-warning-box');
             const warningText = document.getElementById('duplicate-warning-text');
@@ -3992,7 +3941,6 @@ html_content = r'''<!DOCTYPE html>
           showOptimizedPreview(file.name, result.originalSize, result.compressedSize, result.dataUrl, false);
 
           // Update Stepper to Step 2
-          updateUploadStepper(2);
 
           // Kick off background AI OCR scan
           runOcrScanOnImage(result.dataUrl);
@@ -4011,7 +3959,6 @@ html_content = r'''<!DOCTYPE html>
             };
             tempImg.src = e.target.result;
             showOptimizedPreview(file.name, file.size, file.size, selectedImageBase64, false);
-            updateUploadStepper(2);
             runOcrScanOnImage(e.target.result);
           };
           reader.readAsDataURL(file);
@@ -4020,7 +3967,6 @@ html_content = r'''<!DOCTYPE html>
         // PDF Document Analysis via PDF.js (Vector Text & Canvas Rendering)
         selectedImageBlob = file;
         selectedImageMime = 'application/pdf';
-        updateUploadStepper(2);
 
         document.getElementById('drop-prompt').innerHTML = '<div class="py-3"><i class="fa-solid fa-spinner fa-spin text-2xl text-brandBlue"></i><p class="text-xs font-semibold text-slate-700 mt-2">Parsing PDF document pages &amp; vector text...</p></div>';
 
@@ -4170,10 +4116,10 @@ html_content = r'''<!DOCTYPE html>
         return { valid: false, reasons: ["This document is not a valid SR University question paper.", "Document belongs to another university."] };
       }
 
-      // 2. Canvas visual color & contrast analysis (Blocks flowers, scenery, nature, selfies, blanks)
+      // 2. Canvas visual color & contrast analysis (Blocks flowers, scenery, nature wallpapers, selfies, blanks)
       if (visualAnalysis) {
-        // Excessive color saturation check (flower pictures have > 50% color; exam papers have < 5%)
-        if (visualAnalysis.colorRatio > 16.0) {
+        // Excessive vibrant color check (flowers have > 45% vibrant color; exam papers have < 1%)
+        if (visualAnalysis.colorRatio > 25.0) {
           return {
             valid: false,
             reasons: [
@@ -4183,7 +4129,7 @@ html_content = r'''<!DOCTYPE html>
           };
         }
         // Blank document check
-        if (visualAnalysis.contrast < 30) {
+        if (visualAnalysis.contrast < 20) {
           return {
             valid: false,
             reasons: [
@@ -4193,7 +4139,7 @@ html_content = r'''<!DOCTYPE html>
           };
         }
         // Solid black / corrupted
-        if (visualAnalysis.meanBrightness < 35) {
+        if (visualAnalysis.meanBrightness < 25) {
           return {
             valid: false,
             reasons: [
@@ -4204,19 +4150,19 @@ html_content = r'''<!DOCTYPE html>
         }
       }
 
-      // 3. Layout geometry check (standard A4 layout)
-      let conformsA4 = true;
+      // 3. Layout geometry check (supports standard A4: 1.41, 4:3: 1.33, 16:9: 1.78, and 20:9 camera sensors: 2.22)
+      let conformsLayout = true;
       let aspect = 1.414;
       if (width > 0 && height > 0) {
         aspect = Math.max(width, height) / Math.min(width, height);
-        conformsA4 = (aspect >= 1.15 && aspect <= 1.90);
+        conformsLayout = (aspect >= 1.05 && aspect <= 2.50);
       }
-      if (!conformsA4) {
+      if (!conformsLayout) {
         return {
           valid: false,
           reasons: [
             "This document is not a valid SR University question paper.",
-            `Document geometry (aspect ratio ${aspect.toFixed(2)}) does not match standard A4 paper layout.`
+            `Document geometry (aspect ratio ${aspect.toFixed(2)}) does not match standard document layout.`
           ]
         };
       }
@@ -4235,9 +4181,9 @@ html_content = r'''<!DOCTYPE html>
         if (m.test(textUpper)) markerScore++;
       }
 
-      // If text was extracted, verify examination markers
+      // If text was extracted, verify at least 1 examination marker
       if (text.length >= 30) {
-        if (markerScore < 2) {
+        if (markerScore < 1) {
           return {
             valid: false,
             reasons: [
@@ -4254,7 +4200,7 @@ html_content = r'''<!DOCTYPE html>
         reasons: [
           "SR University examination paper structure verified.",
           `Course code '${expectedCode}' verified in document.`,
-          "Standard A4 examination paper layout verified."
+          "Standard document layout verified."
         ]
       };
     }
@@ -4462,8 +4408,8 @@ html_content = r'''<!DOCTYPE html>
             cloudErrorDetail += `Storage: ${storageErr.message || JSON.stringify(storageErr)}. `;
           }
 
-          // Approved & stores full extracted_text under course code
-          let insertPayload = {
+          // Stores paper & indexed extracted_text under course code in Supabase
+          const insertPayload = {
             id: paperId,
             user_id: null,
             subject_code: code,
@@ -4478,10 +4424,6 @@ html_content = r'''<!DOCTYPE html>
             max_marks: exam.includes('MID') ? 30 : 40,
             uploader_name: contributorName,
             uploader_roll: contributorRoll,
-            uploader_email: contributorEmail,
-            is_approved: true,
-            status: 'approved',
-            verification_status: 'approved',
             image_url: uploadedImageUrl || selectedImageBase64,
             extracted_text: extractedOcrText || null,
             ocr_confidence: Math.round(ocrConfidence || 90),
@@ -4489,30 +4431,6 @@ html_content = r'''<!DOCTYPE html>
           };
 
           let { error: dbErr } = await supabaseClient.from('papers').insert(insertPayload);
-
-          if (dbErr && (dbErr.code === '42703' || (dbErr.message && (dbErr.message.includes('verification') || dbErr.message.includes('is_approved'))))) {
-            const fallbackPayload = {
-              id: paperId,
-              subject_code: code,
-              subject_name: name,
-              branch: branch,
-              semester: sem,
-              exam_type: exam,
-              exam_type_label: examLabels[exam] || exam,
-              regulation: reg,
-              academic_year: year,
-              duration: exam.includes('MID') ? '90 Mins' : '3 Hours',
-              max_marks: exam.includes('MID') ? 30 : 40,
-              uploader_name: contributorName,
-              uploader_roll: contributorRoll,
-              image_url: uploadedImageUrl || selectedImageBase64,
-              extracted_text: extractedOcrText || null,
-              ocr_confidence: Math.round(ocrConfidence || 90),
-              download_count: 0
-            };
-            const retryRes = await supabaseClient.from('papers').insert(fallbackPayload);
-            dbErr = retryRes.error;
-          }
 
           if (!dbErr) {
             cloudSaved = true;
