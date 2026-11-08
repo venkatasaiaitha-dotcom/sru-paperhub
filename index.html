@@ -3210,11 +3210,10 @@
       const val = rawVal.trim().toUpperCase();
 
       // Official SRU Subject Code format:
-      // Examples: 25CAI102PC205, 22CS501, 21CS101, 20EC301, 22ME402, CS301, 23AI101
-      // Starts with letters or digits, alphanumeric only, between 4 and 18 chars, contains at least one letter and at least one digit
-      const validChars = /^[A-Z0-9]+$/;
-      const hasLettersAndDigits = /[A-Z]/.test(val) && /[0-9]/.test(val);
-      const isLengthValid = val.length >= 4 && val.length <= 18;
+      // Must contain a valid SRU academic department prefix (e.g. CS, CAI, AIML, AIDS, AI, EC, ECE, EE, EEE, ME, MECH, CE, CIVIL, IT, DS, IOT, CY, HS, MA, PH, CH, MB, BBA)
+      // Examples: 25CAI102PC205, 24CS301PC211, 22CS501, 21CS101, 20EC301, 22ME402, CS301, 23AI101
+      const sruCodePattern = /^(?:R\d{2})?(?:2[0-9])?(?:CS|CAI|AIML|AIDS|AI|EC|ECE|EE|EEE|ME|MECH|CE|CIVIL|IT|DS|IOT|CY|HS|MA|PH|CH|MB|BBA)[0-9A-Z]{2,12}$/i;
+      const isValidCode = sruCodePattern.test(val);
 
       if (!val) {
         hint.className = 'text-[11px] mt-1.5 flex items-center gap-1.5 font-medium transition-colors duration-150 text-amber-600';
@@ -3227,10 +3226,10 @@
         codeInput.classList.remove('border-emerald-500', 'focus:ring-emerald-400', 'border-rose-400');
         codeInput.classList.add('border-slate-300');
         return false;
-      } else if (!validChars.test(val) || !hasLettersAndDigits || !isLengthValid) {
+      } else if (!isValidCode) {
         hint.className = 'text-[11px] mt-1.5 flex items-center gap-1.5 font-medium transition-colors duration-150 text-rose-600';
         icon.className = 'fa-solid fa-triangle-exclamation text-xs text-rose-500';
-        msg.innerHTML = 'Enter correct subject code (e.g. <strong>25CAI102PC205</strong>, <strong>22CS501</strong>)';
+        msg.innerHTML = 'Enter valid SRU subject code with department prefix (e.g. <strong>25CAI102PC205</strong>, <strong>22CS501</strong>, <strong>CS301</strong>)';
         if (statusPill) {
           statusPill.className = 'text-[10px] font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200';
           statusPill.textContent = 'Invalid Code';
@@ -4100,24 +4099,31 @@
       const text = (ocrText || '').trim();
       const textUpper = text.toUpperCase();
 
-      // 1. Prohibited non-examination documents check (Class notes, assignments, lab records, other universities)
-      if (/CLASS\s*NOTES|MY\s*NOTES|LECTURE\s*NOTES/i.test(textUpper)) {
-        return { valid: false, reasons: ["This document is not a valid SR University question paper.", "Document is classified as prohibited material: Class Notes."] };
-      }
-      if (/ASSIGNMENT\s*(?:NO|\d|NUMBER)|HOMEWORK/i.test(textUpper)) {
-        return { valid: false, reasons: ["This document is not a valid SR University question paper.", "Document is classified as prohibited material: Student Assignment."] };
-      }
-      if (/LAB\s*RECORD|LAB\s*MANUAL|EXPERIMENT\s*NO/i.test(textUpper)) {
-        return { valid: false, reasons: ["This document is not a valid SR University question paper.", "Document is classified as prohibited material: Laboratory Record."] };
-      }
-      if (/JNTUH|JNTUK|OSMANIA|KAKATIYA|ANNA\s*UNIVERSITY/i.test(textUpper)) {
-        return { valid: false, reasons: ["This document is not a valid SR University question paper.", "Document belongs to another university."] };
+      // 1. Prohibited non-examination documents check (Event posters, flyers, podcasts, class notes, assignments, lab records, other universities)
+      const prohibitedChecks = [
+        { regex: /\b(?:PODCAST|SCAN\s*ME|AUDITORIUM|WORKSHOP|WEBINAR|HACKATHON|CHIEF\s*GUEST|INVITATION|CERTIFICATE\s*OF|COLLEGE\s*FEST|ANNUAL\s*FEST|REGISTER\s*NOW|REGISTRATION\s*LINK|REGISTRATION\s*FEE)\b|\bPRESENTS\s+(?:A\s+|THE\s+)?(?:PODCAST|SESSION|EVENT|WORKSHOP)\b/i, name: "Event / Promotional Poster or Flyer" },
+        { regex: /\b(?:CLASS\s*NOTES|MY\s*NOTES|LECTURE\s*NOTES)\b/i, name: "Class Notes" },
+        { regex: /\b(?:ASSIGNMENT\s*(?:NO|\d|NUMBER)|HOMEWORK)\b/i, name: "Student Assignment" },
+        { regex: /\b(?:LAB\s*RECORD|LAB\s*MANUAL|EXPERIMENT\s*NO)\b/i, name: "Laboratory Record" },
+        { regex: /\b(?:JNTUH|JNTUK|OSMANIA|KAKATIYA|ANNA\s*UNIVERSITY)\b/i, name: "Other University Paper" }
+      ];
+
+      for (const p of prohibitedChecks) {
+        if (p.regex.test(textUpper)) {
+          return {
+            valid: false,
+            reasons: [
+              "This document is not a valid SR University question paper.",
+              `Document is classified as prohibited material: ${p.name}.`
+            ]
+          };
+        }
       }
 
       // 2. Canvas visual color & contrast analysis (Blocks flowers, scenery, nature wallpapers, selfies, blanks)
       if (visualAnalysis) {
-        // Excessive vibrant color check (flowers have > 45% vibrant color; exam papers have < 1%)
-        if (visualAnalysis.colorRatio > 25.0) {
+        // Excessive vibrant color check (flowers have > 45% vibrant color; exam papers have < 2%)
+        if (visualAnalysis.colorRatio > 18.0) {
           return {
             valid: false,
             reasons: [
@@ -4148,30 +4154,42 @@
         }
       }
 
-      // 3. Layout geometry check (supports standard A4: 1.41, 4:3: 1.33, 16:9: 1.78, and 20:9 camera sensors: 2.22)
+      // 3. Layout geometry check (exam papers are portrait A4/Letter sheets: 1.20 - 2.25)
       let conformsLayout = true;
       let aspect = 1.414;
       if (width > 0 && height > 0) {
         aspect = Math.max(width, height) / Math.min(width, height);
-        conformsLayout = (aspect >= 1.05 && aspect <= 2.50);
+        conformsLayout = (aspect >= 1.20 && aspect <= 2.25);
       }
       if (!conformsLayout) {
         return {
           valid: false,
           reasons: [
             "This document is not a valid SR University question paper.",
-            `Document geometry (aspect ratio ${aspect.toFixed(2)}) does not match standard document layout.`
+            `Document geometry (aspect ratio ${aspect.toFixed(2)}) does not match standard examination document layout.`
           ]
         };
       }
 
-      // 4. Examination Paper Markers (matches university examination structure)
+      // 4. Document Text Presence Guard (rejects documents with no legible text)
+      const words = text.split(/\s+/).filter(w => w.length > 0);
+      if (words.length < 8 || text.length < 25) {
+        return {
+          valid: false,
+          reasons: [
+            "This document is not a valid SR University question paper.",
+            "Document appears blank or unreadable. Legible printed examination questions and header are required."
+          ]
+        };
+      }
+
+      // 5. Examination Paper Markers (matches university examination structure)
       const examMarkers = [
-        /SR\s*UNIV|WARANGAL|SCHOOL\s*OF|DEPARTMENT\s*OF|CS&AI|CSE/i,
-        /B\.?\s*TECH|M\.?\s*TECH|DEGREE|END\s*T[EO]RM|MID\s*T[EO]RM|SEMESTER|ACADEMIC\s*YEAR/i,
-        /COURSE\s*C[O0]DE|SUBJECT\s*C[O0]DE|COURSE\s*TITLE|REGULATION|MAX\.?\s*MARKS|DURATION|HOURS/i,
-        /COORDINATOR|PRAVEEN|BEDIGA|SHARAN/i,
-        /ANSWER\s*ALL\s*QUESTIONS|ANSWER\s*ALL|ANSWER\s*ANY|QUESTION|Q\.?\s*NO|MARKS|CO\d/i
+        /SR\s*UNIV|WARANGAL|SCHOOL\s*OF|DEPARTMENT\s*OF|CS&AI|CS\s*&\s*AI|CSE|ECE|CIVIL|MECHANICAL/i,
+        /B\.?\s*TECH|M\.?\s*TECH|DEGREE|END\s*T[EO]RM|MID\s*T[EO]RM|MAKE\s*UP|SEMESTER|ACADEMIC\s*YEAR/i,
+        /COURSE\s*C[O0]DE|SUBJECT\s*C[O0]DE|COURSE\s*TITLE|REGULATION|MAX\.?\s*MARKS|DURATION|HOURS|DATE\s*OF\s*EXAM/i,
+        /COORDINATOR|FACULTY|INVIGILATOR|CONTROLLER\s*OF\s*EXAMINATIONS|BEDIGA|SHARAN|PRAVEEN/i,
+        /ANSWER\s*ALL\s*QUESTIONS|ANSWER\s*ALL|ANSWER\s*ANY|QUESTION|Q\.?\s*NO|MARKS|CO\d|BLOOM/i
       ];
 
       let markerScore = 0;
@@ -4179,17 +4197,15 @@
         if (m.test(textUpper)) markerScore++;
       }
 
-      // If text was extracted, verify at least 1 examination marker
-      if (text.length >= 30) {
-        if (markerScore < 1) {
-          return {
-            valid: false,
-            reasons: [
-              "This document is not a valid SR University question paper.",
-              "Document does not contain required university examination question paper structure or header."
-            ]
-          };
-        }
+      // Real question paper MUST match at least 2 distinct examination marker categories!
+      if (markerScore < 2) {
+        return {
+          valid: false,
+          reasons: [
+            "This document is not a valid SR University question paper.",
+            "Document does not contain required SR University examination question paper structure or header."
+          ]
+        };
       }
 
       return {
@@ -4301,6 +4317,16 @@
         }
       }
 
+      // If text extraction was not yet triggered or is empty, run instant OCR fallback
+      if ((!extractedOcrText || extractedOcrText.trim().length < 25) && selectedImageBase64 && window.Tesseract) {
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i> <span>Extracting document text...</span>';
+        try {
+          await runOcrScanOnImage(selectedImageBase64);
+        } catch(fallbackErr) {
+          console.warn('OCR fallback error:', fallbackErr);
+        }
+      }
+
       const checkResult = verifyQuestionPaperSimple(
         selectedFileObj || selectedImageBlob,
         extractedOcrText,
@@ -4332,7 +4358,8 @@
           alertBanner.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
-        alert(`This document is not a valid SR University question paper.\n\n${checkResult.reasons.join('\n')}`);
+        const alertReasons = checkResult.reasons.filter(r => r && !r.includes('not a valid SR University question paper')).join('\n• ');
+        alert(`This document is not a valid SR University question paper.\n\n• ${alertReasons || checkResult.reasons.join('\n')}`);
         return; // HARD STOP: REJECTED
       }
 

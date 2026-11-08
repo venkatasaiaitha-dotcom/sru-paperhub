@@ -291,5 +291,26 @@ Question 1: Explain relational normalization with examples.
         self.assertEqual(report['decision'], 'REJECTED')
         self.assertTrue(any('excessive vibrant color' in r.lower() or 'flowers' in r.lower() for r in report['reasons']))
 
+    def test_14_event_podcast_poster_strictly_rejected(self):
+        """Event posters, promotional flyers, invitations, or podcasts are strictly rejected."""
+        poster_text = """
+The Students collective presents Podcast Session
+N. Sai koushik CEO @ Revithalize
+SCAN ME!!!
+It started with an old bike in our shed.
+2nd nov 9:30 onwards 9th block auditorium
+From SRIX to Roads of innovation
+"""
+        report = verifier.verify(
+            file_bytes=b"",
+            filename="podcast_poster.jpg",
+            mime_type="image/jpeg",
+            student_selection=self.genuine_selection,
+            client_ocr_text=poster_text,
+            ocr_confidence=85
+        )
+        self.assertEqual(report["decision"], "REJECTED")
+        self.assertTrue(any("prohibited" in r.lower() or "poster" in r.lower() for r in report["reasons"]))
+
 if __name__ == "__main__":
     unittest.main()

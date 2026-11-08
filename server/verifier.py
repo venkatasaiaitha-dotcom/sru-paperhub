@@ -243,7 +243,7 @@ class VerificationEngine:
                     if w > 0 and h > 0:
                         aspect_ratio = max(w, h) / min(w, h)
                         is_portrait = h >= w
-                        conforms = 1.15 <= aspect_ratio <= 1.85
+                        conforms = 1.20 <= aspect_ratio <= 2.25
                 doc.close()
                 return conforms, aspect_ratio, is_portrait
             except Exception:
@@ -256,7 +256,7 @@ class VerificationEngine:
             if w > 0 and h > 0:
                 aspect_ratio = max(w, h) / min(w, h)
                 is_portrait = h >= w
-                conforms = 1.15 <= aspect_ratio <= 1.85
+                conforms = 1.20 <= aspect_ratio <= 2.25
             return conforms, aspect_ratio, is_portrait
         except Exception:
             pass
@@ -278,7 +278,7 @@ class VerificationEngine:
             total = len(pixels)
             colorful = sum(1 for r, g, b in pixels if max(r, g, b) - min(r, g, b) > 30)
             ratio = (colorful / total) * 100
-            return ratio > 16.0, ratio
+            return ratio > 18.0, ratio
         except Exception:
             return False, 0.0
 
@@ -500,6 +500,7 @@ class VerificationEngine:
 
         # 8B. Local Regex disallowed documents check
         disallowed = [
+            (r"\b(?:podcast|scan\s*me|auditorium|workshop|webinar|hackathon|chief\s*guest|invitation|certificate\s*of|college\s*fest|annual\s*fest|register\s*now|registration\s*link|registration\s*fee)\b|\bpresents\s+(?:a\s+|the\s+)?(?:podcast|session|event|workshop)\b", "Event / Promotional Poster or Flyer"),
             (r"\b(?:class\s*notes|lecture\s*notes|my\s*notes)\b", "Class Notes"),
             (r"\b(?:assignment(?:\s*no|\s*number|\s*\d)?|homework)\b", "Student Assignment"),
             (r"\b(?:lab\s*manual|lab\s*record|record\s*book|experiment\s*no)\b", "Laboratory Record"),
