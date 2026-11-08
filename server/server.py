@@ -8,7 +8,13 @@ import base64
 import time
 import secrets
 import mimetypes
-from .verifier import verifier
+try:
+    from .verifier import verifier
+except (ImportError, ValueError):
+    try:
+        from verifier import verifier
+    except (ImportError, ValueError):
+        from server.verifier import verifier
 
 PORT = int(os.environ.get("PORT", 3000))
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
