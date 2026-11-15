@@ -1,8 +1,12 @@
 # SR University PaperHub - Verification & Server Dependencies
 # Standard Library powers base HTTP server.
-# Multimodal AI Document Intelligence:
-google-genai>=2.0.0
 
-# Document parsing & geometry engines:
+# Environment configuration loader:
+python-dotenv>=1.0.0
+
+# Multimodal AI Document Intelligence (Interactions API + Gemini 3.x):
+google-genai>=2.30.1
+
+# Document parsing, image preprocessing & quality analysis:
 pymupdf>=1.24.0
 pillow>=10.0.0

@@ -9,12 +9,21 @@ import time
 import secrets
 import mimetypes
 try:
+    from dotenv import load_dotenv
+    load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env"))
+except ImportError:
+    pass
+
+try:
     from .verifier import verifier
+    from .verify_paper_handler import handle_verify_paper_request
 except (ImportError, ValueError):
     try:
         from verifier import verifier
+        from verify_paper_handler import handle_verify_paper_request
     except (ImportError, ValueError):
         from server.verifier import verifier
+        from server.verify_paper_handler import handle_verify_paper_request
 
 PORT = int(os.environ.get("PORT", 3000))
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -226,6 +235,9 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
+        if path == "/api/verify-paper":
+            handle_verify_paper_request(self)
+            return
         data = self._read_body_json()
 
         # Student Login / Registration

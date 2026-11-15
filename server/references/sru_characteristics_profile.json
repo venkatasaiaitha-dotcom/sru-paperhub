@@ -1,0 +1,23 @@
+{
+  "profile_name": "SR University General Examination Characteristics",
+  "version": "1.0",
+  "university": "SR University",
+  "characteristic_patterns": [
+    "Institutional header typically includes SR University (often boxed or centered) along with School/Department (e.g. School of CS&AI, Engineering, CSE, ECE) and campus/location cues when printed",
+    "Examination metadata block commonly lists Program (B.Tech/M.Tech/MBA/BBA), Exam Type (Mid-1, Mid-2, Re-Mid, End Term, Supply), Academic Year (e.g. 2024-2025, 2025-2026), Regulation (e.g. R20, R22, R24), Course/Subject Code, Course Title, Year/Sem, Duration, Max Marks, Date, and often Course Coordinator",
+    "Standard instructions such as 'Answer all questions', 'Answer any...', 'Each question carries...', or section-wise attempt rules",
+    "Structured academic questions numbered cleanly (e.g. Q.No. 1A/1B, Part A / Part B / Section A / Section B) with explicit marks column or per-question marks notation (e.g. [5M], 5+5, 10M, CO/BL tags)"
+  ],
+  "acceptable_variations": [
+    "Different regulations (R18, R20, R22, R23, R24, R25) and departments format headers slightly differently (single table, dual boxes, or compact text banners)",
+    "Mid-term / internal papers may omit Regulation or Academic Year or combine Section A & B without a separate footer page number",
+    "Multi-page question papers frequently place the institutional header only on Page 1 while Pages 2..N continue Sections, questions, or diagrams",
+    "Mobile photographs or scans may lack decorative borders or have slight perspective tilt while still keeping text and structure intact"
+  ],
+  "suspicious_red_flags": [
+    "Document mentions 'SR University' or labels like 'Course Coordinator' on a flyer, podcast poster, brochure, certificate, class notes, homework assignment, answer key, or random text page",
+    "Another university name (e.g., JNTUH, JNTUK, Osmania, Kakatiya, VTU, Anna University, SRM) appears alongside pasted SR University text",
+    "Subject title/course code contradicts the actual technical domain of the questions inside the paper",
+    "Declared total marks or question numbering is severely scrambled, nonsensical, or replaced by non-academic prose"
+  ]
+}

@@ -530,8 +530,27 @@ html_content = r'''<!DOCTYPE html>
         </div>
       </div>
 
-      <!-- Simple Verification Status Banner -->
+      <!-- AI Examiner 5-Step Progress Tracker -->
+      <div id="ai-examiner-progress" style="display: none;" class="mb-3 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+        <div class="flex items-center justify-between mb-2">
+          <span id="ai-progress-headline" class="font-bold text-slate-800 flex items-center gap-1.5">
+            <i class="fa-solid fa-spinner fa-spin text-brandBlue"></i>
+            <span>AI Examiner is analyzing your question paper...</span>
+          </span>
+          <span class="text-[10px] font-mono-code text-slate-500">Gemini Examiner</span>
+        </div>
+        <div class="grid grid-cols-5 gap-1.5 text-center text-[10px] font-semibold">
+          <div id="ai-step-1" class="p-1.5 rounded-lg bg-slate-200 text-slate-600">1. Uploading</div>
+          <div id="ai-step-2" class="p-1.5 rounded-lg bg-slate-200 text-slate-600">2. Preparing</div>
+          <div id="ai-step-3" class="p-1.5 rounded-lg bg-slate-200 text-slate-600">3. AI Examining</div>
+          <div id="ai-step-4" class="p-1.5 rounded-lg bg-slate-200 text-slate-600">4. Verifying SRU</div>
+          <div id="ai-step-5" class="p-1.5 rounded-lg bg-slate-200 text-slate-600">5. Result</div>
+        </div>
+      </div>
+
+      <!-- AI Verification Status Banner -->
       <div id="verification-status-banner" style="display: none;" class="mb-3.5 p-3 rounded-xl text-xs shadow-sm"></div>
+      <p class="text-[10px] text-slate-400 mb-3">Automated checks evaluate whether the uploaded document is consistent with expected SRU question-paper characteristics.</p>
 
       <!-- Real-time Duplicate Detection Alert Banner -->
       <div id="duplicate-warning-box" style="display: none;" class="mb-3.5 p-3.5 bg-red-50 border-2 border-red-300 rounded-xl text-red-950 text-xs shadow-sm">
@@ -557,7 +576,7 @@ html_content = r'''<!DOCTYPE html>
       </div>
 
       <!-- Form -->
-      <form id="paper-upload-form" onsubmit="handlePaperUploadSubmit(event)" class="space-y-3.5">
+      <form id="paper-upload-form" onsubmit="handleAIExaminerUploadSubmit(event)" class="space-y-3.5">
         
         <!-- Row 1: Branch & Semester -->
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2104,7 +2123,7 @@ html_content = r'''<!DOCTYPE html>
                   <span>AI Audit Report</span>
                 </button>
                 <span class="text-[9px] font-mono-code text-slate-400 font-semibold">
-                  ${report && report.confidence ? `${Math.round(report.confidence)}% Score` : (isApproved ? '95% Score' : (isRejected ? 'Disqualified' : 'Pending AI'))}
+                  ${report && report.confidence !== undefined ? `${Math.round(report.confidence <= 1 ? report.confidence * 100 : report.confidence)}% Score` : (isApproved ? '95% Score' : (isRejected ? 'Disqualified' : 'Pending AI'))}
                 </span>
               </div>
             </td>
@@ -2293,35 +2312,37 @@ html_content = r'''<!DOCTYPE html>
         report = synthesizeReportFromPaper(paper);
       }
 
-      const decision = report.decision || (paper.isApproved ? 'APPROVED' : (paper.status === 'rejected' ? 'REJECTED' : 'MANUAL_REVIEW'));
-      const score = report.confidence !== undefined ? report.confidence : (paper.ocrConfidence || (paper.isApproved ? 92 : 55));
+      const rawDecision = String(report.decision || (paper.isApproved ? 'APPROVE' : (paper.status === 'rejected' ? 'REJECT' : 'HUMAN_REVIEW'))).toUpperCase();
+      const decision = rawDecision === 'APPROVED' ? 'APPROVE' : (rawDecision === 'REJECTED' ? 'REJECT' : rawDecision);
+      const rawScore = report.confidence !== undefined ? Number(report.confidence) : (paper.ocrConfidence || (paper.isApproved ? 92 : 55));
+      const score = rawScore <= 1.0 ? rawScore * 100 : rawScore;
 
       scoreEl.textContent = `${Math.round(score)}%`;
-      if (decision === 'APPROVED') {
+      if (decision === 'APPROVE') {
         badgeEl.textContent = 'APPROVED';
         badgeEl.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono-code bg-emerald-100 text-emerald-800 border border-emerald-300';
-      } else if (decision === 'REJECTED') {
+      } else if (decision === 'REJECT') {
         badgeEl.textContent = 'REJECTED';
         badgeEl.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono-code bg-red-100 text-red-800 border border-red-300';
       } else {
-        badgeEl.textContent = 'MANUAL REVIEW';
+        badgeEl.textContent = 'HUMAN REVIEW';
         badgeEl.className = 'px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono-code bg-amber-100 text-amber-800 border border-amber-300';
       }
 
       const comp = report.comparison && report.comparison.field_comparisons ? report.comparison.field_comparisons : {};
-      const extracted = report.extracted_fields || {};
+      const extracted = report.extracted_fields || report.metadata || {};
 
       const fields = [
-        { label: '1. University Name', student: 'SR University', ext: extracted.university_name || 'SR UNIVERSITY', match: comp.university_name ? comp.university_name.match : true },
-        { label: '2. Academic Regulation', student: paper.regulation || 'R22', ext: extracted.academic_regulation || paper.regulation || 'R22', match: comp.academic_regulation ? comp.academic_regulation.match : true },
+        { label: '1. University Name', student: 'SR University', ext: extracted.university_name || (report.institution && report.institution.name) || 'SR UNIVERSITY', match: comp.university_name ? comp.university_name.match : (!report.institution || report.institution.status !== 'CONTRADICTORY') },
+        { label: '2. Academic Regulation', student: paper.regulation || 'R22', ext: extracted.academic_regulation || extracted.regulation || paper.regulation || 'R22', match: comp.academic_regulation ? comp.academic_regulation.match : true },
         { label: '3. Academic Year', student: paper.academicYear || '2025-2026', ext: extracted.academic_year || paper.academicYear || '2025-2026', match: comp.academic_year ? comp.academic_year.match : true },
         { label: '4. Course Code', student: paper.subjectCode || '—', ext: extracted.course_code || paper.subjectCode || '—', match: comp.course_code ? comp.course_code.match : true },
         { label: '5. Subject Name', student: paper.subjectName || '—', ext: extracted.subject_name || paper.subjectName || '—', match: comp.subject_name ? comp.subject_name.match : true },
         { label: '6. Subject Code', student: paper.subjectCode || '—', ext: extracted.subject_code || paper.subjectCode || '—', match: comp.subject_code ? comp.subject_code.match : true },
         { label: '7. Engineering Branch', student: paper.branch || '—', ext: extracted.branch || paper.branch || '—', match: comp.branch ? comp.branch.match : true },
-        { label: '8. Year / Semester', student: `Sem ${paper.semester}`, ext: extracted.year_of_study || `Sem ${paper.semester}`, match: comp.year_of_study ? comp.year_of_study.match : true },
-        { label: '9. Course Coordinator Label', student: 'Mandatory Label', ext: extracted.course_coordinator_label_found ? 'Present ("Course Coordinator")' : 'Present in Header', match: extracted.course_coordinator_label_found !== false },
-        { label: '10. Course Coordinator Name', student: 'Faculty Instructor', ext: extracted.course_coordinator_name || paper.courseCoordinator || 'DR. P. PRAVEEN', match: Boolean(extracted.course_coordinator_name || paper.courseCoordinator || paper.isApproved) }
+        { label: '8. Year / Semester', student: `Sem ${paper.semester}`, ext: extracted.year_of_study || extracted.semester || `Sem ${paper.semester}`, match: comp.year_of_study ? comp.year_of_study.match : true },
+        { label: '9. Course Coordinator Label', student: 'Contextual Label', ext: extracted.course_coordinator_label_found ? 'Present ("Course Coordinator")' : (extracted.course_coordinator ? 'Present in Header' : 'Checked by AI'), match: extracted.course_coordinator_label_found !== false },
+        { label: '10. Course Coordinator Name', student: 'Faculty Instructor', ext: extracted.course_coordinator_name || extracted.course_coordinator || paper.courseCoordinator || 'Not listed / Optional', match: true }
       ];
 
       tbody.innerHTML = fields.map(f => {
@@ -2350,12 +2371,17 @@ html_content = r'''<!DOCTYPE html>
 
       const reasons = (report.reasons && report.reasons.length > 0)
         ? report.reasons
-        : [
-            'SR University institutional authority verified.',
-            `Course coordinator identified: ${extracted.course_coordinator_name || paper.courseCoordinator || 'Verified Faculty Coordinator'}.`,
-            'All 10 mandatory academic metadata parameters aligned.',
-            'Zero prohibited non-exam indicators detected.'
-          ];
+        : ((report.reason || (report.highlights && report.highlights.length > 0) || (report.concerns && report.concerns.length > 0))
+            ? [
+                ...(report.reason ? [report.reason] : []),
+                ...((report.highlights || []).map(h => `✓ ${h}`)),
+                ...((report.concerns || []).map(c => `✗ ${c}`))
+              ]
+            : [
+                'SR University institutional characteristics verified.',
+                'Examination layout, question numbering, and marks structure aligned.',
+                'No disqualifying non-examination indicators detected.'
+              ]);
 
       reasonsList.innerHTML = reasons.map(r => `<li>${escapeHTML(r)}</li>`).join('');
 
@@ -3752,6 +3778,11 @@ html_content = r'''<!DOCTYPE html>
         document.getElementById('up-branch').value = currentUser.branch;
         document.getElementById('up-semester').value = currentUser.semester;
       }
+      window.__aiExaminerVerifiedResult = null;
+      const progressBox = document.getElementById('ai-examiner-progress');
+      if (progressBox) progressBox.style.display = 'none';
+      const statusBanner = document.getElementById('verification-status-banner');
+      if (statusBanner) statusBanner.style.display = 'none';
       clearSelectedImage();
       generateUploadCaptcha();
       document.getElementById('upload-modal').style.display = 'flex';
@@ -3764,6 +3795,11 @@ html_content = r'''<!DOCTYPE html>
       document.getElementById('upload-modal').style.display = 'none';
       document.body.classList.remove('overflow-hidden');
       document.getElementById('paper-upload-form').reset();
+      window.__aiExaminerVerifiedResult = null;
+      const progressBox = document.getElementById('ai-examiner-progress');
+      if (progressBox) progressBox.style.display = 'none';
+      const statusBanner = document.getElementById('verification-status-banner');
+      if (statusBanner) statusBanner.style.display = 'none';
       clearSelectedImage();
       const warningBox = document.getElementById('duplicate-warning-box');
       if (warningBox) warningBox.style.display = 'none';
@@ -3771,8 +3807,8 @@ html_content = r'''<!DOCTYPE html>
       if (submitBtn) {
         submitBtn.disabled = false;
         delete submitBtn.dataset.duplicateLocked;
-        submitBtn.className = "w-full py-2.5 px-4 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center space-x-1.5";
-        submitBtn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up text-xs"></i> <span>Upload &amp; Submit for Review</span>';
+        submitBtn.className = "flex-1 py-2.5 bg-brandBlue hover:bg-brandBlueHover text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center space-x-1.5";
+        submitBtn.innerHTML = '<i class="fa-solid fa-shield-check text-xs"></i> <span>Verify &amp; Submit Question Paper</span>';
       }
     }
 
@@ -3832,6 +3868,285 @@ html_content = r'''<!DOCTYPE html>
       } catch (e) {
         console.warn('Canvas analysis error:', e);
         return null;
+      }
+    }
+
+    // ---------------- HUMAN-LIKE AI EXAMINER UPLOAD INTEGRATION ----------------
+    function getExaminerVerifyUrl() {
+      const configuredBase = (window.SRU_API_BASE_URL || localStorage.getItem('SRU_API_BASE_URL') || '').trim().replace(/\/+$/, '');
+      return `${configuredBase}/api/verify-paper`;
+    }
+
+    function setExaminerProgressStep(activeStep, finalDecision = null, customHeadline = '') {
+      const box = document.getElementById('ai-examiner-progress');
+      const headline = document.getElementById('ai-progress-headline');
+      if (!box) return;
+      box.style.display = 'block';
+
+      const stepLabels = [
+        '1. Uploading',
+        '2. Preparing',
+        '3. AI Examining',
+        '4. Verifying SRU',
+        '5. Result'
+      ];
+
+      for (let idx = 1; idx <= 5; idx++) {
+        const el = document.getElementById(`ai-step-${idx}`);
+        if (!el) continue;
+        el.textContent = stepLabels[idx - 1];
+        el.className = 'p-1.5 rounded-lg text-[10px] font-semibold transition ';
+        if (idx < activeStep) {
+          el.className += 'bg-emerald-100 text-emerald-800 border border-emerald-200';
+        } else if (idx === activeStep) {
+          if (finalDecision === 'APPROVE') {
+            el.className += 'bg-emerald-600 text-white font-bold';
+            el.textContent = '5. APPROVED';
+          } else if (finalDecision === 'REJECT') {
+            el.className += 'bg-red-600 text-white font-bold';
+            el.textContent = '5. REJECTED';
+          } else if (finalDecision === 'HUMAN_REVIEW') {
+            el.className += 'bg-amber-500 text-white font-bold';
+            el.textContent = '5. HUMAN REVIEW';
+          } else if (finalDecision === 'ERROR') {
+            el.className += 'bg-slate-600 text-white font-bold';
+            el.textContent = '5. UNAVAILABLE';
+          } else {
+            el.className += 'bg-brandBlue text-white font-bold animate-pulse';
+          }
+        } else {
+          el.className += 'bg-slate-200 text-slate-500';
+        }
+      }
+
+      if (headline) {
+        if (customHeadline) {
+          headline.innerHTML = customHeadline;
+        } else if (activeStep === 1) {
+          headline.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-brandBlue"></i><span>Uploading question paper securely...</span>';
+        } else if (activeStep === 2) {
+          headline.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-brandBlue"></i><span>Preparing document pages &amp; checking quality...</span>';
+        } else if (activeStep === 3) {
+          headline.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-brandBlue"></i><span>AI Examiner is analyzing your question paper...</span>';
+        } else if (activeStep === 4) {
+          headline.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-brandBlue"></i><span>Verifying SRU characteristics &amp; consistency...</span>';
+        }
+      }
+    }
+
+    function renderExaminerResultBanner(outcome) {
+      const banner = document.getElementById('verification-status-banner');
+      if (!banner) return;
+      banner.style.display = 'block';
+
+      if (outcome.unavailable) {
+        banner.className = 'mb-3.5 p-3.5 rounded-xl text-xs shadow-sm bg-amber-50 border border-amber-300 text-amber-900';
+        banner.innerHTML = `
+          <div class="font-bold flex items-center gap-1.5 text-amber-900 mb-1">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>AI Verification Unavailable</span>
+          </div>
+          <p>${escapeHTML(outcome.message || 'AI verification is temporarily unavailable. Please try again.')}</p>
+        `;
+        return;
+      }
+
+      const v = outcome.verification || {};
+      const decision = v.decision || 'HUMAN_REVIEW';
+
+      if (decision === 'APPROVE') {
+        const items = (v.highlights && v.highlights.length > 0)
+          ? v.highlights
+          : ['SR University identification', 'Valid examination structure', 'Consistent question paper evidence'];
+        banner.className = 'mb-3.5 p-3.5 rounded-xl text-xs shadow-sm bg-emerald-50 border border-emerald-300 text-emerald-900';
+        banner.innerHTML = `
+          <div class="font-bold text-emerald-900 mb-1.5 flex items-center justify-between">
+            <span><i class="fa-solid fa-circle-check mr-1.5"></i>AI Verification: APPROVED</span>
+            <span class="font-mono-code text-[11px] bg-white px-2 py-0.5 rounded border border-emerald-200">${Math.round((v.confidence || 0.9) * 100)}% confidence</span>
+          </div>
+          <p class="font-semibold text-emerald-800 mb-1">The document contains:</p>
+          <ul class="space-y-0.5 mb-2">
+            ${items.map(item => `<li>&#10003; ${escapeHTML(item)}</li>`).join('')}
+          </ul>
+          <p class="text-[11px] text-emerald-800 border-t border-emerald-200 pt-1.5">
+            <strong>Overall assessment:</strong> ${escapeHTML(v.assessment_statement || 'The document is consistent with expected SRU question-paper characteristics.')}
+          </p>
+        `;
+      } else if (decision === 'REJECT') {
+        const concerns = (v.concerns && v.concerns.length > 0)
+          ? v.concerns
+          : (v.reason ? [v.reason] : ['Document is not consistent with expected SRU question-paper characteristics.']);
+        banner.className = 'mb-3.5 p-3.5 rounded-xl text-xs shadow-sm bg-red-50 border border-red-300 text-red-900';
+        banner.innerHTML = `
+          <div class="font-bold text-red-900 mb-1.5 flex items-center justify-between">
+            <span><i class="fa-solid fa-circle-xmark mr-1.5"></i>AI Verification: REJECTED</span>
+            <span class="font-mono-code text-[11px] bg-white px-2 py-0.5 rounded border border-red-200">Not Published</span>
+          </div>
+          <p class="font-semibold text-red-800 mb-1">Major concerns:</p>
+          <ul class="space-y-0.5 mb-1.5">
+            ${concerns.map(c => `<li>&#10007; ${escapeHTML(c)}</li>`).join('')}
+          </ul>
+          ${v.reason ? `<p class="text-[11px] text-red-800 border-t border-red-200 pt-1.5">${escapeHTML(v.reason)}</p>` : ''}
+        `;
+      } else {
+        const reasons = (v.concerns && v.concerns.length > 0)
+          ? v.concerns
+          : (v.reason ? [v.reason] : ['Evidence or document quality is insufficient for automated approval.']);
+        banner.className = 'mb-3.5 p-3.5 rounded-xl text-xs shadow-sm bg-amber-50 border border-amber-300 text-amber-900';
+        banner.innerHTML = `
+          <div class="font-bold text-amber-900 mb-1.5 flex items-center justify-between">
+            <span><i class="fa-solid fa-user-clock mr-1.5"></i>AI Verification: HUMAN REVIEW</span>
+            <span class="font-mono-code text-[11px] bg-white px-2 py-0.5 rounded border border-amber-200">Pending Review</span>
+          </div>
+          <p class="font-semibold text-amber-800 mb-1">The document could not be reliably verified because:</p>
+          <ul class="space-y-0.5 mb-2">
+            ${reasons.map(r => `<li>- ${escapeHTML(r)}</li>`).join('')}
+          </ul>
+          <p class="text-[11px] text-amber-800 border-t border-amber-200 pt-1.5">
+            This file was not automatically approved. Please upload a clearer photo or complete PDF for reliable verification.
+          </p>
+        `;
+      }
+    }
+
+    function collectUploadFormMetadata() {
+      const form = document.getElementById('paper-upload-form');
+      if (!form) return {};
+      const metadata = {};
+      const inputs = form.querySelectorAll('input, select');
+      inputs.forEach((el) => {
+        if (el.type === 'file') return;
+        const val = (el.value || '').trim();
+        if (!val) return;
+        const keySource = `${el.id || ''} ${el.name || ''} ${el.placeholder || ''}`.toLowerCase();
+        if (keySource.includes('branch') || keySource.includes('dept')) metadata.branch = val;
+        else if (keySource.includes('sem')) metadata.semester = val;
+        else if (keySource.includes('reg')) metadata.regulation = val;
+        else if (keySource.includes('year') || keySource.includes('academic')) metadata.academicYear = val;
+        else if (keySource.includes('code')) metadata.subjectCode = val.toUpperCase();
+        else if (keySource.includes('subject') || keySource.includes('title') || keySource.includes('name')) metadata.subjectName = val;
+        else if (keySource.includes('exam') || keySource.includes('type')) metadata.examType = val;
+      });
+      return metadata;
+    }
+
+    async function handleAIExaminerUploadSubmit(event) {
+      event.preventDefault();
+      window.__aiExaminerVerifiedResult = null;
+
+      const form = document.getElementById('paper-upload-form');
+      if (form && !form.checkValidity()) {
+        form.reportValidity();
+        return;
+      }
+
+      const fileToVerify = selectedFileObj || selectedImageBlob;
+      if (!fileToVerify) {
+        return handlePaperUploadSubmit(event);
+      }
+
+      const submitBtn = document.getElementById('btn-submit-paper');
+      const originalBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xs"></i><span>AI Examiner Analyzing...</span>';
+      }
+
+      let stepTimer = null;
+      const controller = new AbortController();
+      const timeoutHandle = setTimeout(() => controller.abort(), 65000);
+
+      try {
+        setExaminerProgressStep(1);
+        const formData = new FormData();
+        const uploadName = (selectedFileObj && selectedFileObj.name) ? selectedFileObj.name : 'question_paper.jpg';
+        formData.append('file', fileToVerify, uploadName);
+        formData.append('metadata', JSON.stringify(collectUploadFormMetadata()));
+
+        setTimeout(() => setExaminerProgressStep(2), 180);
+        stepTimer = setTimeout(() => setExaminerProgressStep(3), 550);
+
+        const response = await fetch(getExaminerVerifyUrl(), {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal
+        });
+
+        clearTimeout(stepTimer);
+        setExaminerProgressStep(4);
+
+        let data = null;
+        try {
+          data = await response.json();
+        } catch (parseErr) {
+          data = null;
+        }
+
+        if (!response.ok || !data || !data.success || !data.verification) {
+          const isClientRejection = response.status === 400 || response.status === 413;
+          if (isClientRejection && data && data.verification) {
+            setExaminerProgressStep(5, 'REJECT', '<i class="fa-solid fa-circle-xmark text-red-600"></i><span>AI Examiner Rejected Upload</span>');
+            renderExaminerResultBanner({ verification: data.verification });
+          } else {
+            const msg = (data && data.error)
+              ? data.error
+              : 'AI verification is temporarily unavailable. Please try again.';
+            setExaminerProgressStep(5, 'ERROR', '<i class="fa-solid fa-triangle-exclamation text-amber-600"></i><span>AI Verification Temporarily Unavailable</span>');
+            renderExaminerResultBanner({ unavailable: true, message: msg });
+          }
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnHtml;
+          }
+          return;
+        }
+
+        const verification = data.verification;
+        const decision = verification.decision || 'HUMAN_REVIEW';
+
+        if (decision === 'APPROVE') {
+          setExaminerProgressStep(5, 'APPROVE', '<i class="fa-solid fa-circle-check text-emerald-600"></i><span>AI Verification: APPROVED</span>');
+          renderExaminerResultBanner({ verification });
+          window.__aiExaminerVerifiedResult = {
+            ...verification,
+            confidence: Math.round((verification.confidence || 0.9) * 100),
+            reasons: [
+              verification.reason,
+              ...((verification.highlights || []).map(h => `✓ ${h}`))
+            ].filter(Boolean)
+          };
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnHtml;
+          }
+          return await handlePaperUploadSubmit(event);
+        }
+
+        if (decision === 'REJECT') {
+          setExaminerProgressStep(5, 'REJECT', '<i class="fa-solid fa-circle-xmark text-red-600"></i><span>AI Verification: REJECTED</span>');
+          renderExaminerResultBanner({ verification });
+        } else {
+          setExaminerProgressStep(5, 'HUMAN_REVIEW', '<i class="fa-solid fa-user-clock text-amber-600"></i><span>AI Verification: HUMAN REVIEW</span>');
+          renderExaminerResultBanner({ verification });
+        }
+
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnHtml;
+        }
+      } catch (err) {
+        clearTimeout(stepTimer);
+        setExaminerProgressStep(5, 'ERROR', '<i class="fa-solid fa-triangle-exclamation text-amber-600"></i><span>AI Verification Temporarily Unavailable</span>');
+        renderExaminerResultBanner({
+          unavailable: true,
+          message: 'AI verification is temporarily unavailable. Please try again.'
+        });
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnHtml;
+        }
+      } finally {
+        clearTimeout(timeoutHandle);
       }
     }
 
@@ -4329,14 +4644,18 @@ html_content = r'''<!DOCTYPE html>
         }
       }
 
-      const checkResult = verifyQuestionPaperSimple(
-        selectedFileObj || selectedImageBlob,
-        extractedOcrText,
-        code,
-        selectedImageWidth,
-        selectedImageHeight,
-        selectedVisualAnalysis
-      );
+      const verifiedAiReport = window.__aiExaminerVerifiedResult || null;
+      window.__aiExaminerVerifiedResult = null;
+      const checkResult = verifiedAiReport
+        ? { valid: true, reasons: [], aiReport: verifiedAiReport }
+        : verifyQuestionPaperSimple(
+            selectedFileObj || selectedImageBlob,
+            extractedOcrText,
+            code,
+            selectedImageWidth,
+            selectedImageHeight,
+            selectedVisualAnalysis
+          );
 
       if (!checkResult.valid) {
         submitBtn.disabled = false;

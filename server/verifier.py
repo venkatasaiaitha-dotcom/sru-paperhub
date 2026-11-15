@@ -33,7 +33,7 @@ except ImportError:
 
 class VerificationEngine:
     def __init__(self):
-        self.default_model = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash").strip()
+        self.default_model = os.environ.get("GEMINI_MODEL", "gemini-3.8-flash").strip() or "gemini-3.8-flash"
 
     def get_gemini_client(self):
         """
