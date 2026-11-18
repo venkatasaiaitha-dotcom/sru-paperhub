@@ -4056,7 +4056,7 @@
 
       let stepTimer = null;
       const controller = new AbortController();
-      const timeoutHandle = setTimeout(() => controller.abort(), 120000);
+      const timeoutHandle = setTimeout(() => controller.abort(), 180000);
 
       try {
         setExaminerProgressStep(1);
@@ -4155,10 +4155,14 @@
         }
       } catch (err) {
         clearTimeout(stepTimer);
-        setExaminerProgressStep(5, 'ERROR', '<i class="fa-solid fa-triangle-exclamation text-amber-600"></i><span>AI Verification Temporarily Unavailable</span>');
+        const isAbort = err.name === 'AbortError';
+        const errorMsg = isAbort
+          ? 'Verification request timed out. Please try uploading again.'
+          : 'AI verification is temporarily unavailable. Please try again.';
+        setExaminerProgressStep(5, 'ERROR', `<i class="fa-solid fa-triangle-exclamation text-amber-600"></i><span>${isAbort ? 'Verification Timed Out' : 'AI Verification Temporarily Unavailable'}</span>`);
         renderExaminerResultBanner({
           unavailable: true,
-          message: 'AI verification is temporarily unavailable. Please try again.'
+          message: errorMsg
         });
         if (submitBtn) {
           submitBtn.disabled = false;
