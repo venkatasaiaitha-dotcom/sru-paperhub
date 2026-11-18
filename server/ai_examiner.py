@@ -460,7 +460,7 @@ class GeminiExaminerClient:
         client = self._get_client()
         primary_model = self.get_model_name()
         candidates: List[str] = [primary_model]
-        for fallback in ("gemini-3.5-flash-lite", "gemini-3.8-flash"):
+        for fallback in ("gemini-3.1-flash-lite", "gemini-3.5-flash-lite"):
             if fallback not in candidates:
                 candidates.append(fallback)
 
@@ -474,19 +474,18 @@ class GeminiExaminerClient:
         input_blocks: List[Dict[str, Any]] = [
             {"type": "text", "text": _build_document_context_prompt(doc)}
         ]
-        resolution = "high" if len(doc.visual_pages) <= 3 else "medium"
         for page in doc.visual_pages:
             input_blocks.append(
                 {
                     "type": "image",
                     "data": base64.b64encode(page.image_bytes).decode("ascii"),
                     "mime_type": page.mime_type,
-                    "resolution": resolution,
                 }
             )
 
         last_category = "AI_UNAVAILABLE"
         attempts = self.config.max_retries + 1
+        per_attempt_timeout = min(32.0, float(self.config.timeout_seconds))
 
         for model_idx, candidate_model in enumerate(candidates):
             for attempt in range(attempts):
@@ -505,7 +504,7 @@ class GeminiExaminerClient:
                             "max_output_tokens": 2500,
                         },
                         store=False,
-                        timeout=float(self.config.timeout_seconds),
+                        timeout=per_attempt_timeout,
                     )
                     raw_text = _extract_interaction_text(interaction)
                     normalized = _parse_and_normalize_ai_json(raw_text)
@@ -527,6 +526,15 @@ class GeminiExaminerClient:
                         raise GeminiServiceUnavailableError(
                             AI_UNAVAILABLE_MESSAGE, error_category=last_category
                         )
+                    # Fast failover: if timeout or 5xx/rate-limit and a fallback model exists, switch immediately!
+                    if category in ("TIMEOUT", "UPSTREAM_5XX", "RATE_LIMIT_OR_QUOTA") and model_idx < len(candidates) - 1:
+                        logger.info(
+                            "Fast failover from '%s' to fallback model '%s' due to %s...",
+                            candidate_model,
+                            candidates[model_idx + 1],
+                            category,
+                        )
+                        break
                     if attempt < attempts - 1:
                         delay = min(4.0, 0.6 * (2 ** attempt) + random.uniform(0.05, 0.25))
                         time.sleep(delay)

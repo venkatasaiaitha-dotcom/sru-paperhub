@@ -478,8 +478,9 @@ def _process_pdf_bytes(
 
         is_scanned = total_chars < max(40, page_count * 25)
         sampled_indices = _select_representative_page_indices(page_count, max_pdf_pages)
-        dpi = 140 if len(sampled_indices) <= 4 else 115
-        max_edge = 1600 if len(sampled_indices) <= 4 else 1350
+        dpi = 120 if len(sampled_indices) == 1 else 96
+        max_edge = 1350 if len(sampled_indices) == 1 else 1000
+        quality = 80 if len(sampled_indices) == 1 else 75
 
         visual_pages: List[PreparedVisualPage] = []
         poor_pages = 0
@@ -495,7 +496,7 @@ def _process_pdf_bytes(
                 for issue in diag["issues"]:
                     if issue not in quality_issues:
                         quality_issues.append(issue)
-            jpeg_bytes, out_w, out_h = _encode_normalized_jpeg(pil_img, max_edge=max_edge, quality=85)
+            jpeg_bytes, out_w, out_h = _encode_normalized_jpeg(pil_img, max_edge=max_edge, quality=quality)
             visual_pages.append(
                 PreparedVisualPage(
                     page_number=idx + 1,
