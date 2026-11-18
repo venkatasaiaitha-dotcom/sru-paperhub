@@ -47,6 +47,38 @@ PLACEHOLDER_REGEX = re.compile(
     re.IGNORECASE,
 )
 
+HEALTH_BIOLOGY_REGEX = re.compile(
+    r"\b("
+    r"resting\s+heart\s+rate|heart\s+rate|blood\s+pressure|red\s+blood\s+cells?|white\s+blood\s+cells?|"
+    r"bacterial\s+infection|viral\s+infection|antibiotics?|dehydration|diabetes|insulin|blood\s+sugar|"
+    r"immune\s+system|cardiovascular|digestive\s+system|filtering\s+waste\s+from\s+the\s+blood|"
+    r"health-related\s+questions?|scenario-based\s+health|vital\s+signs?|chest\s+pain|painkiller|"
+    r"stethoscope|symptoms?|pathogen|hypertension|glucose|cholesterol|hemoglobin|kidneys?\s+filter|"
+    r"human\s+anatomy|physiology|pharmacology"
+    r")\b",
+    re.IGNORECASE,
+)
+
+TECH_COURSE_HEADER_REGEX = re.compile(
+    r"\b("
+    r"cloud(?:\s+computing)?|computer\s+science|c\.?s\.?e|data\s+structures?|operating\s+systems?|"
+    r"dbms|database|machine\s+learning|software\s+engineering|artificial\s+intelligence|"
+    r"algorithms?|cryptography|cyber\s+security|web\s+technologies|compiler\s+design|computer\s+networks|"
+    r"microprocessors?|embedded\s+systems?|information\s+management\s+systems?"
+    r")\b",
+    re.IGNORECASE,
+)
+
+TECH_QUESTION_CONTENT_REGEX = re.compile(
+    r"\b("
+    r"iaas|paas|saas|virtualization|hypervisor|docker|kubernetes|aws|azure|gcp|"
+    r"datacenter|virtual\s+machine|load\s+balancing|scalability|multitenancy|database|sql|"
+    r"algorithm|complexity|memory|cpu|network|packet|protocol|cache|thread|process|api|"
+    r"compiler|operating\s+system|linux|storage|server|router|bandwidth|encryption"
+    r")\b",
+    re.IGNORECASE,
+)
+
 
 class DocumentValidationError(Exception):
     """Raised when an uploaded file fails security, type, size, or structural integrity validation."""
@@ -95,6 +127,8 @@ class ProcessedDocument:
     aspect_ratio: float = 1.414
     has_placeholder_text: bool = False
     placeholder_matches: List[str] = field(default_factory=list)
+    has_domain_mismatch: bool = False
+    domain_mismatch_reason: str = ""
 
 
 def sanitize_filename(filename: Optional[str]) -> str:
@@ -492,6 +526,20 @@ def _process_pdf_bytes(
     if has_placeholder:
         quality_issues.append("Document contains placeholder filler text ('Lorem Ipsum') instead of genuine examination questions.")
 
+    # Check for course subject domain mismatch (e.g. Health questions in a Computer Science / Cloud Computing paper)
+    has_domain_mismatch = False
+    domain_mismatch_reason = ""
+    if TECH_COURSE_HEADER_REGEX.search(full_doc_text):
+        health_matches = HEALTH_BIOLOGY_REGEX.findall(full_doc_text)
+        tech_matches = TECH_QUESTION_CONTENT_REGEX.findall(full_doc_text)
+        if len(health_matches) >= 3 and len(tech_matches) <= 2:
+            has_domain_mismatch = True
+            domain_mismatch_reason = (
+                "Severe content domain mismatch: Question content consists of health/biology questions "
+                "instead of matching the stated Computer Science / Cloud Computing course."
+            )
+            quality_issues.append(domain_mismatch_reason)
+
     quality_summary = "POOR" if quality_insufficient else "GOOD"
     return ProcessedDocument(
         request_id=request_id,
@@ -513,4 +561,6 @@ def _process_pdf_bytes(
         aspect_ratio=first_aspect,
         has_placeholder_text=has_placeholder,
         placeholder_matches=cleaned_hits,
+        has_domain_mismatch=has_domain_mismatch,
+        domain_mismatch_reason=domain_mismatch_reason,
     )

@@ -486,11 +486,32 @@ class VerificationEngine:
                 "engine": engine_mode,
             }
 
+        # 7C. Subject Domain Mismatch Guard (e.g. Health/Biology questions in a Computer Science / Cloud Computing paper)
+        tech_course_match = re.search(r"\b(cloud(?:\s+computing)?|computer\s+science|c\.?s\.?e|data\s+structures?|operating\s+systems?|dbms|database|machine\s+learning|software\s+engineering|artificial\s+intelligence|algorithms?|cryptography|cyber\s+security|web\s+technologies|compiler\s+design|computer\s+networks)\b", doc_text, re.IGNORECASE)
+        health_matches = re.findall(r"\b(resting\s+heart\s+rate|heart\s+rate|blood\s+pressure|red\s+blood\s+cells?|white\s+blood\s+cells?|bacterial\s+infection|viral\s+infection|antibiotics?|dehydration|diabetes|insulin|blood\s+sugar|immune\s+system|cardiovascular|digestive\s+system|filtering\s+waste\s+from\s+the\s+blood|health-related|scenario-based\s+health|vital\s+signs?|chest\s+pain|painkiller|stethoscope|symptoms?|pathogen|hypertension|glucose|cholesterol|hemoglobin|kidneys?\s+filter)\b", doc_text, re.IGNORECASE)
+        tech_question_matches = re.findall(r"\b(iaas|paas|saas|virtualization|hypervisor|docker|kubernetes|aws|azure|gcp|datacenter|virtual\s+machine|load\s+balancing|scalability|multitenancy|database|sql|algorithm|complexity|memory|cpu|network|packet|protocol|cache|thread|process|api|compiler|operating\s+system|linux)\b", doc_text, re.IGNORECASE)
+        if tech_course_match and len(health_matches) >= 3 and len(tech_question_matches) <= 2:
+            return {
+                "decision": "REJECTED",
+                "is_duplicate": False,
+                "confidence": 99,
+                "reasons": [
+                    "This document is not a valid SR University question paper.",
+                    "Severe content domain mismatch: Question content consists of health/biology questions instead of matching the stated Computer Science / Cloud Computing course.",
+                ],
+                "extracted_fields": {
+                    "university_name": uni_name,
+                    "course_code": extracted_code,
+                },
+                "extracted_text": doc_text,
+                "engine": engine_mode,
+            }
+
         # 8. Check for disallowed documents (Class notes, assignments, lab records, other universities, dummy text)
         # 8A. Gemini classification check
         if gemini_result:
             doc_type = gemini_result.get("document_type", "QUESTION_PAPER").upper()
-            if doc_type in ["CLASS_NOTES", "ASSIGNMENT", "LAB_RECORD", "TEXTBOOK", "OTHER_UNIVERSITY", "DUMMY_PLACEHOLDER_PAPER", "OTHER"]:
+            if doc_type in ["CLASS_NOTES", "ASSIGNMENT", "LAB_RECORD", "TEXTBOOK", "OTHER_UNIVERSITY", "DUMMY_PLACEHOLDER_PAPER", "DOMAIN_MISMATCHED_PAPER", "OTHER"]:
                 type_labels = {
                     "CLASS_NOTES": "Class Notes / Lecture Summary",
                     "ASSIGNMENT": "Student Assignment / Homework",
@@ -498,6 +519,7 @@ class VerificationEngine:
                     "TEXTBOOK": "Textbook Material / Syllabus",
                     "OTHER_UNIVERSITY": "Other University Question Paper",
                     "DUMMY_PLACEHOLDER_PAPER": "Dummy / Placeholder Question Paper",
+                    "DOMAIN_MISMATCHED_PAPER": "Domain Mismatched Question Paper",
                     "OTHER": "Unrelated Non-Examination Document"
                 }
                 label = type_labels.get(doc_type, doc_type)

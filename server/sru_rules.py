@@ -51,6 +51,7 @@ NON_EXAM_DOCUMENT_TYPES = {
     "poster_flyer",
     "non_academic_image",
     "dummy_placeholder_paper",
+    "domain_mismatched_paper",
 }
 
 

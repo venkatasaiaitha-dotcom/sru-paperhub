@@ -726,6 +726,33 @@ class TestHumanLikeAIExaminerSuite(unittest.TestCase):
         self.assertEqual(payload["verification"]["decision"], "APPROVE")
         self.assertEqual(payload["verification"]["metadata"]["course_code"], "25CAI102PC205")
 
+    def test_cloud_computing_with_health_questions_rejected(self):
+        """Adversarial paper with Cloud Computing header but Health/Biology questions is strictly REJECTED."""
+        mismatch_pdf_bytes = _make_pdf_bytes(
+            [
+                "SR UNIVERSITY\nSCHOOL OF CS & AI DEPARTMENT OF CSE\n"
+                "Course Code 25CAI102PC205 Course Title Cloud Computing Regulation R25\n"
+                "Q. No. 1: What is the normal resting heart rate range for adults? [10M]\n"
+                "Q. No. 2: Which organ is primarily responsible for filtering waste from the blood? [10M]\n"
+                "Q. No. 3: What is the difference between bacterial infection and viral infection? [10M]"
+            ]
+        )
+        fake_client = _FakeGeminiClient(lambda doc, meta: _valid_ai_payload({
+            "document_type": "domain_mismatched_paper",
+            "is_exam_paper": False,
+            "decision": "REJECT",
+            "confidence": 0.99,
+            "issues": [{"severity": "HIGH", "issue": "Severe content domain mismatch: questions belong to Health/Biology instead of Cloud Computing."}],
+            "suspicious_signals": ["Domain mismatch: questions do not match course title."],
+            "reason": "Document rejected: The questions are health/biology-related while course title states Cloud Computing."
+        }))
+        svc = AIExaminerService(gemini_client=fake_client)
+        status, payload = svc.examine_upload(mismatch_pdf_bytes, "health_in_cloud.pdf", "application/pdf")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["verification"]["decision"], "REJECT")
+        self.assertLessEqual(payload["verification"]["score"], 0.20)
+        self.assertTrue(any("domain mismatch" in c.lower() or "health" in c.lower() for c in payload["verification"]["concerns"]))
+
 
 if __name__ == "__main__":
     unittest.main()

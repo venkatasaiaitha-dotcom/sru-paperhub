@@ -4473,6 +4473,31 @@
         }
       }
 
+      // 1B. Placeholder text guard (Lorem Ipsum, etc.)
+      if (/\b(LOREM\s+IPSUM|DOLOR\s+SIT\s+AMET|CONSECTETUR\s+ADIPISCING|PELLENTESQUE\s+SEM|IACULIS\s+MASSA)\b/i.test(textUpper)) {
+        return {
+          valid: false,
+          reasons: [
+            "This document is not a valid SR University question paper.",
+            "Document contains placeholder filler text ('Lorem Ipsum') instead of genuine examination questions."
+          ]
+        };
+      }
+
+      // 1C. Course domain mismatch check (Health/Biology questions in a Computer Science / Cloud Computing paper)
+      const isTechCourse = /\b(CLOUD|COMPUTER\s+SCIENCE|CSE|CS\s*&\s*AI|DATA\s+STRUCTURES|OPERATING\s+SYSTEMS|DBMS|DATABASE|MACHINE\s+LEARNING|SOFTWARE\s+ENGINEERING|ARTIFICIAL\s+INTELLIGENCE|ALGORITHMS|NETWORKS)\b/i.test(textUpper);
+      const healthMatches = (textUpper.match(/\b(RESTING\s+HEART\s+RATE|HEART\s+RATE|BLOOD\s+PRESSURE|RED\s+BLOOD\s+CELLS?|WHITE\s+BLOOD\s+CELLS?|BACTERIAL\s+INFECTION|VIRAL\s+INFECTION|ANTIBIOTICS?|DEHYDRATION|DIABETES|INSULIN|BLOOD\s+SUGAR|IMMUNE\s+SYSTEM|CARDIOVASCULAR|DIGESTIVE\s+SYSTEM|FILTERING\s+WASTE|HEALTH-RELATED|SCENARIO-BASED\s+HEALTH|CHEST\s+PAIN|PAINKILLER)\b/gi) || []).length;
+      const techQuestionMatches = (textUpper.match(/\b(IAAS|PAAS|SAAS|VIRTUALIZATION|HYPERVISOR|DOCKER|KUBERNETES|AWS|AZURE|GCP|DATACENTER|LOAD\s+BALANCING|SCALABILITY|MULTITENANCY|DATABASE|SQL|ALGORITHM|COMPLEXITY|MEMORY|CPU|NETWORK|PACKET|PROTOCOL|CACHE|PROCESS|API|COMPILER|LINUX)\b/gi) || []).length;
+      if (isTechCourse && healthMatches >= 3 && techQuestionMatches <= 2) {
+        return {
+          valid: false,
+          reasons: [
+            "This document is not a valid SR University question paper.",
+            "Severe content domain mismatch: Question content consists of health/biology questions instead of matching the stated Computer Science / Cloud Computing course."
+          ]
+        };
+      }
+
       // 2. Canvas visual color & contrast analysis (Blocks flowers, scenery, nature wallpapers, selfies, blanks)
       if (visualAnalysis) {
         // Excessive vibrant color check (flowers have > 45% vibrant color; exam papers have < 2%)
@@ -4683,7 +4708,15 @@
       const verifiedAiReport = window.__aiExaminerVerifiedResult || null;
       window.__aiExaminerVerifiedResult = null;
       const checkResult = verifiedAiReport
-        ? { valid: true, reasons: [], aiReport: verifiedAiReport }
+        ? (verifiedAiReport.decision === 'REJECT'
+            ? {
+                valid: false,
+                reasons: (verifiedAiReport.concerns && verifiedAiReport.concerns.length)
+                  ? verifiedAiReport.concerns
+                  : [verifiedAiReport.reason || 'Document rejected by AI verification.']
+              }
+            : { valid: true, reasons: [], aiReport: verifiedAiReport }
+          )
         : verifyQuestionPaperSimple(
             selectedFileObj || selectedImageBlob,
             extractedOcrText,
@@ -4791,6 +4824,8 @@
           }
 
           // Stores paper & indexed extracted_text under course code in Supabase
+          const isAutoApproved = !checkResult.aiReport || checkResult.aiReport.decision === 'APPROVE';
+          const insertStatus = isAutoApproved ? 'approved' : 'pending';
           const insertPayload = {
             id: paperId,
             user_id: null,
@@ -4806,6 +4841,10 @@
             max_marks: exam.includes('MID') ? 30 : 40,
             uploader_name: contributorName,
             uploader_roll: contributorRoll,
+            is_approved: isAutoApproved,
+            status: insertStatus,
+            verification_status: insertStatus,
+            verification_report: checkResult.aiReport || null,
             image_url: uploadedImageUrl || selectedImageBase64,
             extracted_text: extractedOcrText || null,
             ocr_confidence: Math.round(ocrConfidence || 90),
@@ -4827,6 +4866,8 @@
       // Local server API fallback
       if (!cloudSaved) {
         try {
+          const isAutoApproved = !checkResult.aiReport || checkResult.aiReport.decision === 'APPROVE';
+          const insertStatus = isAutoApproved ? 'approved' : 'pending';
           const resp = await fetch('/api/papers', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -4845,9 +4886,10 @@
               uploader_name: contributorName,
               uploader_roll: contributorRoll,
               uploader_email: contributorEmail,
-              is_approved: true,
-              status: 'approved',
-              verification_status: 'approved',
+              is_approved: isAutoApproved,
+              status: insertStatus,
+              verification_status: insertStatus,
+              verification_report: checkResult.aiReport || null,
               image_url: uploadedImageUrl || selectedImageBase64,
               extracted_text: extractedOcrText || null,
               ocr_confidence: Math.round(ocrConfidence || 90),
@@ -4866,8 +4908,14 @@
 
       if (cloudSaved) {
         recordUploadRateLimit();
-        alert('Question paper verified and approved! Published directly to the archive.');
-        showToast('Question paper verified and published directly to the archive!', 'success');
+        const isAutoApproved = !checkResult.aiReport || checkResult.aiReport.decision === 'APPROVE';
+        if (isAutoApproved) {
+          alert('Question paper verified and approved! Published directly to the archive.');
+          showToast('Question paper verified and published directly to the archive!', 'success');
+        } else {
+          alert('Question paper submitted to Staff Review Queue for verification.');
+          showToast('Submitted to Staff Review Queue for verification.', 'info');
+        }
         closeUploadModal();
         await fetchPapers();
       } else {

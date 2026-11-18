@@ -749,6 +749,38 @@ def score_and_decide(
         if not any("Lorem Ipsum" in iss.get("issue", "") for iss in issues):
             issues.append({"severity": "HIGH", "issue": "Document contains Lorem Ipsum placeholder text instead of real academic examination questions."})
 
+    has_domain_mismatch = (
+        getattr(doc, "has_domain_mismatch", False)
+        or doc_type == "domain_mismatched_paper"
+        or any(
+            re.search(
+                r"\b(domain\s+mismatch|subject\s+mismatch|incompatible\s+subjects?|unrelated\s+to\s+the\s+stated\s+course|unrelated\s+subjects?|different\s+subjects?|questions?\s+do\s+not\s+(?:match|belong)|health\s+and\s+biology|health\s+and\s+medical|biology\s+instead\s+of|medical\s+questions)\b",
+                str(iss.get("issue", "")),
+                re.I,
+            )
+            for iss in issues
+        )
+        or any(
+            re.search(
+                r"\b(domain\s+mismatch|subject\s+mismatch|incompatible\s+subjects?|unrelated\s+to\s+the\s+stated\s+course|unrelated\s+subjects?|different\s+subjects?|questions?\s+do\s+not\s+(?:match|belong)|health\s+and\s+biology|health\s+and\s+medical|biology\s+instead\s+of|medical\s+questions)\b",
+                str(sig),
+                re.I,
+            )
+            for sig in suspicious_signals
+        )
+        or any(
+            e.get("category") == "course_consistency" and e.get("status") == "CONTRADICTORY"
+            for e in evidence
+        )
+    )
+    if has_domain_mismatch:
+        doc_type = "domain_mismatched_paper"
+        is_exam = False
+        if not any("domain mismatch" in str(sig).lower() for sig in suspicious_signals):
+            suspicious_signals.append("Subject domain mismatch: Questions belong to an unrelated field (e.g. Health/Biology) instead of the stated course.")
+        if not any("domain mismatch" in str(iss.get("issue", "")).lower() for iss in issues):
+            issues.append({"severity": "HIGH", "issue": "Severe content domain mismatch between course title and question content."})
+
     poor_quality_flag = (
         doc.quality_insufficient
         or not quality.get("is_readable", True)
@@ -778,6 +810,7 @@ def score_and_decide(
         and not clear_non_paper
         and not poor_quality_flag
         and not has_placeholder
+        and not has_domain_mismatch
         and len(suspicious_signals) == 0
         and high_issues == 0
     )
@@ -786,6 +819,12 @@ def score_and_decide(
         final_decision = "REJECT"
         final_reason = (
             "The document is not an authentic examination paper (contains dummy placeholder / 'Lorem Ipsum' filler text instead of genuine examination questions)."
+        )
+        final_score = 0.05
+    elif has_domain_mismatch or doc_type == "domain_mismatched_paper":
+        final_decision = "REJECT"
+        final_reason = (
+            "The document is rejected: Severe content domain mismatch. The examination questions do not belong to the stated course subject."
         )
         final_score = 0.05
     elif has_other_university or (clear_non_paper and not poor_quality_flag):
