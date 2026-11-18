@@ -18,6 +18,7 @@
     "Document mentions 'SR University' or labels like 'Course Coordinator' on a flyer, podcast poster, brochure, certificate, class notes, homework assignment, answer key, or random text page",
     "Another university name (e.g., JNTUH, JNTUK, Osmania, Kakatiya, VTU, Anna University, SRM) appears alongside pasted SR University text",
     "Subject title/course code contradicts the actual technical domain of the questions inside the paper",
+    "Document contains placeholder / filler text ('Lorem Ipsum', Latin dummy text, repetitive sample paragraphs, or non-academic filler text) instead of genuine examination questions",
     "Declared total marks or question numbering is severely scrambled, nonsensical, or replaced by non-academic prose"
   ]
 }

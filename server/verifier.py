@@ -468,17 +468,36 @@ class VerificationEngine:
                 "engine": engine_mode
             }
 
-        # 8. Check for disallowed documents (Class notes, assignments, lab records, other universities)
+        # 7B. Placeholder / Lorem Ipsum text guard
+        if re.search(r"\b(lorem\s+ipsum|dolor\s+sit\s+amet|consectetur\s+adipiscing|pellentesque\s+sem|iaculis\s+massa)\b", doc_text, re.IGNORECASE):
+            return {
+                "decision": "REJECTED",
+                "is_duplicate": False,
+                "confidence": 99,
+                "reasons": [
+                    "This document is not a valid SR University question paper.",
+                    "Document contains placeholder filler text ('Lorem Ipsum') instead of genuine examination questions.",
+                ],
+                "extracted_fields": {
+                    "university_name": uni_name,
+                    "course_code": extracted_code,
+                },
+                "extracted_text": doc_text,
+                "engine": engine_mode,
+            }
+
+        # 8. Check for disallowed documents (Class notes, assignments, lab records, other universities, dummy text)
         # 8A. Gemini classification check
         if gemini_result:
             doc_type = gemini_result.get("document_type", "QUESTION_PAPER").upper()
-            if doc_type in ["CLASS_NOTES", "ASSIGNMENT", "LAB_RECORD", "TEXTBOOK", "OTHER_UNIVERSITY", "OTHER"]:
+            if doc_type in ["CLASS_NOTES", "ASSIGNMENT", "LAB_RECORD", "TEXTBOOK", "OTHER_UNIVERSITY", "DUMMY_PLACEHOLDER_PAPER", "OTHER"]:
                 type_labels = {
                     "CLASS_NOTES": "Class Notes / Lecture Summary",
                     "ASSIGNMENT": "Student Assignment / Homework",
                     "LAB_RECORD": "Laboratory Manual / Record",
                     "TEXTBOOK": "Textbook Material / Syllabus",
                     "OTHER_UNIVERSITY": "Other University Question Paper",
+                    "DUMMY_PLACEHOLDER_PAPER": "Dummy / Placeholder Question Paper",
                     "OTHER": "Unrelated Non-Examination Document"
                 }
                 label = type_labels.get(doc_type, doc_type)

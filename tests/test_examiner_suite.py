@@ -667,6 +667,65 @@ class TestHumanLikeAIExaminerSuite(unittest.TestCase):
                 gm_missing.analyze_document(doc)
             self.assertEqual(err_ctx.exception.error_category, "MISSING_API_KEY")
 
+    def test_lorem_ipsum_fake_paper_with_real_sru_header_rejected(self):
+        """Adversarial fake paper with real SRU header but Lorem Ipsum filler text is strictly REJECTED."""
+        fake_pdf_bytes = _make_pdf_bytes(
+            [
+                "SR UNIVERSITY\nSCHOOL OF CS & AI DEPARTMENT OF CSE\n"
+                "Course Code 25CAI102PC205 Course Title Cloud Computing Regulation R25\n"
+                "Q. No. 1: Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae. [15M]\n"
+                "Q. No. 2: Pulvinar vivamus fringilla lacus nec metus bibendum egestas. [15M]"
+            ]
+        )
+        fake_client = _FakeGeminiClient(lambda doc, meta: _valid_ai_payload({
+            "document_type": "dummy_placeholder_paper",
+            "is_exam_paper": False,
+            "decision": "REJECT",
+            "confidence": 0.99,
+            "issues": [{"severity": "HIGH", "issue": "Document contains Lorem Ipsum placeholder text instead of real questions."}],
+            "suspicious_signals": ["Dummy placeholder text ('Lorem Ipsum') detected in questions section."],
+            "reason": "The document is a template or fake paper containing dummy placeholder text ('Lorem Ipsum')."
+        }))
+        svc = AIExaminerService(gemini_client=fake_client)
+        status, payload = svc.examine_upload(fake_pdf_bytes, "fake_lorem.pdf", "application/pdf")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["verification"]["decision"], "REJECT")
+        self.assertTrue(any("Lorem Ipsum" in c for c in payload["verification"]["concerns"]))
+
+    def test_real_cloud_computing_sru_paper_approved(self):
+        """Genuine SRU paper with real academic Cloud Computing problem statements is APPROVED."""
+        real_pdf_bytes = _make_pdf_bytes(
+            [
+                "SR UNIVERSITY\nSCHOOL OF CS & AI DEPARTMENT OF CSE\n"
+                "Course Code 25CAI102PC205 Course Title Cloud Computing Regulation R25\n"
+                "Q. No. 1: Analyze the financial shift from CAPEX to OPEX in IaaS cloud deployment. [15M]\n"
+                "Q. No. 2: Explain resource pooling in Hypervisors and Weighted Round Robin load balancing. [15M]"
+            ]
+        )
+        fake_client = _FakeGeminiClient(lambda doc, meta: _valid_ai_payload({
+            "document_type": "question_paper",
+            "is_exam_paper": True,
+            "decision": "APPROVE",
+            "confidence": 0.96,
+            "metadata": {
+                "course_code": "25CAI102PC205",
+                "subject_code": "25CAI102PC205",
+                "subject_name": "Cloud Computing",
+                "regulation": "R25",
+                "academic_year": "2026-27",
+                "branch": "CSE",
+                "year": "II",
+                "semester": "I",
+                "exam_type": "Make up MidTerm",
+            },
+            "reason": "Authentic SR University examination paper on Cloud Computing."
+        }))
+        svc = AIExaminerService(gemini_client=fake_client)
+        status, payload = svc.examine_upload(real_pdf_bytes, "real_cloud.pdf", "application/pdf")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["verification"]["decision"], "APPROVE")
+        self.assertEqual(payload["verification"]["metadata"]["course_code"], "25CAI102PC205")
+
 
 if __name__ == "__main__":
     unittest.main()

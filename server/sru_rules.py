@@ -36,6 +36,7 @@ DOCUMENT_TYPES = (
     "answer_key",
     "poster_flyer",
     "non_academic_image",
+    "dummy_placeholder_paper",
     "corrupted_unreadable",
     "unknown",
 )
@@ -49,6 +50,7 @@ NON_EXAM_DOCUMENT_TYPES = {
     "answer_key",
     "poster_flyer",
     "non_academic_image",
+    "dummy_placeholder_paper",
 }
 
 

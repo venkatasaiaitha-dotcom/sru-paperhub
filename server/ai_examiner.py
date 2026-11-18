@@ -85,6 +85,7 @@ EXAMINER_JSON_SCHEMA: Dict[str, Any] = {
                 "answer_key",
                 "poster_flyer",
                 "non_academic_image",
+                "dummy_placeholder_paper",
                 "corrupted_unreadable",
                 "unknown",
             ],
@@ -382,6 +383,12 @@ def _build_document_context_prompt(doc: ProcessedDocument) -> str:
         lines.append(
             f"PDF extraction metadata: is_scanned={doc.is_scanned_pdf}, total_extracted_chars={doc.total_extracted_chars}."
         )
+        if getattr(doc, "has_placeholder_text", False):
+            lines.append(
+                f"CRITICAL CONTENT ALERT: Document text contains placeholder filler text ({', '.join(getattr(doc, 'placeholder_matches', []))}). "
+                "Inspect the questions carefully. If the questions are Lorem Ipsum or dummy filler text, you must classify document_type as 'dummy_placeholder_paper', "
+                "is_exam_paper as False, and decision as 'REJECT'."
+            )
         text_pages = [p for p in doc.pdf_page_texts if p.get("text")]
         if text_pages:
             lines.append("Extracted PDF text by page (for cross-page verification across all pages):")
@@ -722,6 +729,26 @@ def score_and_decide(
     final_score = round(max(0.0, min(1.0, positive_score - total_penalty)), 4)
 
     # Hard Backend Decision Guardrails (Section 7, 10, 19, 24, 26)
+    has_placeholder = (
+        getattr(doc, "has_placeholder_text", False)
+        or doc_type == "dummy_placeholder_paper"
+        or any(
+            re.search(r"\b(lorem\s+ipsum|dolor\s+sit\s+amet|consectetur\s+adipiscing|iaculis\s+massa)\b", str(sig), re.I)
+            for sig in suspicious_signals
+        )
+        or any(
+            re.search(r"\b(lorem\s+ipsum|dolor\s+sit\s+amet|consectetur\s+adipiscing|iaculis\s+massa)\b", str(iss.get("issue", "")), re.I)
+            for iss in issues
+        )
+    )
+    if has_placeholder:
+        doc_type = "dummy_placeholder_paper"
+        is_exam = False
+        if not any("Lorem Ipsum" in sig for sig in suspicious_signals):
+            suspicious_signals.append("Dummy placeholder text ('Lorem Ipsum') detected in questions section.")
+        if not any("Lorem Ipsum" in iss.get("issue", "") for iss in issues):
+            issues.append({"severity": "HIGH", "issue": "Document contains Lorem Ipsum placeholder text instead of real academic examination questions."})
+
     poor_quality_flag = (
         doc.quality_insufficient
         or not quality.get("is_readable", True)
@@ -750,11 +777,18 @@ def score_and_decide(
         and not has_other_university
         and not clear_non_paper
         and not poor_quality_flag
+        and not has_placeholder
         and len(suspicious_signals) == 0
         and high_issues == 0
     )
 
-    if has_other_university or (clear_non_paper and not poor_quality_flag):
+    if has_placeholder or doc_type == "dummy_placeholder_paper":
+        final_decision = "REJECT"
+        final_reason = (
+            "The document is not an authentic examination paper (contains dummy placeholder / 'Lorem Ipsum' filler text instead of genuine examination questions)."
+        )
+        final_score = 0.05
+    elif has_other_university or (clear_non_paper and not poor_quality_flag):
         final_decision = "REJECT"
     elif has_anti_bypass and (final_score < config.approve_threshold or contradictory_evidence_count >= 1):
         final_decision = "REJECT"

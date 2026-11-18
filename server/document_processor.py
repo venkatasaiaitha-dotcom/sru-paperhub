@@ -27,6 +27,26 @@ _LAPLACIAN_KERNEL = ImageFilter.Kernel(
     offset=128,
 )
 
+PLACEHOLDER_REGEX = re.compile(
+    r"\b("
+    r"lorem\s+ipsum|"
+    r"dolor\s+sit\s+amet|"
+    r"consectetur\s+adipiscing|"
+    r"adipiscing\s+elit|"
+    r"pellentesque\s+sem|"
+    r"pulvinar\s+vivamus|"
+    r"iaculis\s+massa|"
+    r"pretium\s+tellus|"
+    r"taciti\s+sociosqu|"
+    r"torquent\s+per\s+conubia|"
+    r"insert\s+question\s+here|"
+    r"sample\s+question\s+text|"
+    r"dummy\s+question\s+text|"
+    r"placeholder\s+text"
+    r")\b",
+    re.IGNORECASE,
+)
+
 
 class DocumentValidationError(Exception):
     """Raised when an uploaded file fails security, type, size, or structural integrity validation."""
@@ -73,6 +93,8 @@ class ProcessedDocument:
     quality_issues: List[str] = field(default_factory=list)
     quality_summary: str = "GOOD"
     aspect_ratio: float = 1.414
+    has_placeholder_text: bool = False
+    placeholder_matches: List[str] = field(default_factory=list)
 
 
 def sanitize_filename(filename: Optional[str]) -> str:
@@ -462,6 +484,14 @@ def _process_pdf_bytes(
         if "PDF pages appear completely blank." not in quality_issues:
             quality_issues.append("PDF pages appear completely blank.")
 
+    # Check for placeholder filler text (e.g. Lorem Ipsum, dummy Latin template text)
+    full_doc_text = " ".join(p.get("text", "") for p in page_texts)
+    placeholder_hits = PLACEHOLDER_REGEX.findall(full_doc_text)
+    has_placeholder = len(placeholder_hits) > 0
+    cleaned_hits = list(dict.fromkeys(placeholder_hits))[:5]
+    if has_placeholder:
+        quality_issues.append("Document contains placeholder filler text ('Lorem Ipsum') instead of genuine examination questions.")
+
     quality_summary = "POOR" if quality_insufficient else "GOOD"
     return ProcessedDocument(
         request_id=request_id,
@@ -481,4 +511,6 @@ def _process_pdf_bytes(
         quality_issues=quality_issues,
         quality_summary=quality_summary,
         aspect_ratio=first_aspect,
+        has_placeholder_text=has_placeholder,
+        placeholder_matches=cleaned_hits,
     )
