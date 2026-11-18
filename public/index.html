@@ -3996,13 +3996,17 @@
             <span><i class="fa-solid fa-user-clock mr-1.5"></i>AI Verification: HUMAN REVIEW</span>
             <span class="font-mono-code text-[11px] bg-white px-2 py-0.5 rounded border border-amber-200">Pending Review</span>
           </div>
-          <p class="font-semibold text-amber-800 mb-1">The document could not be reliably verified because:</p>
+          <p class="font-semibold text-amber-800 mb-1">The AI Examiner noted:</p>
           <ul class="space-y-0.5 mb-2">
             ${reasons.map(r => `<li>- ${escapeHTML(r)}</li>`).join('')}
           </ul>
-          <p class="text-[11px] text-amber-800 border-t border-amber-200 pt-1.5">
-            This file was not automatically approved. Please upload a clearer photo or complete PDF for reliable verification.
+          <p class="text-[11px] text-amber-800 border-t border-amber-200 pt-1.5 mb-2.5">
+            This file requires manual staff verification before public archival. You can submit it now to the staff review queue.
           </p>
+          <button type="button" onclick="submitPaperForStaffReview()" class="w-full py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center justify-center space-x-1.5">
+            <i class="fa-solid fa-paper-plane text-xs"></i>
+            <span>Submit to Staff Review Queue</span>
+          </button>
         `;
       }
     }
@@ -4101,8 +4105,25 @@
 
         const verification = data.verification;
         const decision = verification.decision || 'HUMAN_REVIEW';
+        window.__lastExaminerVerification = verification;
 
         if (decision === 'APPROVE') {
+          // Auto-populate form from verified document metadata if empty or unedited
+          const m = verification.metadata || {};
+          if (m.subject_name) {
+            const nameEl = document.getElementById('up-subject-name');
+            if (nameEl && (!nameEl.value || nameEl.value.trim() === '')) {
+              nameEl.value = m.subject_name;
+            }
+          }
+          if (m.course_code || m.subject_code) {
+            const codeEl = document.getElementById('up-subject-code');
+            const extractedCode = (m.course_code || m.subject_code || '').trim();
+            if (codeEl && (!codeEl.value || codeEl.value.trim() === '' || codeEl.value.length < 3)) {
+              codeEl.value = extractedCode;
+            }
+          }
+
           setExaminerProgressStep(5, 'APPROVE', '<i class="fa-solid fa-circle-check text-emerald-600"></i><span>AI Verification: APPROVED</span>');
           renderExaminerResultBanner({ verification });
           window.__aiExaminerVerifiedResult = {
@@ -4146,6 +4167,23 @@
       } finally {
         clearTimeout(timeoutHandle);
       }
+    }
+
+    async function submitPaperForStaffReview() {
+      const v = window.__lastExaminerVerification || {};
+      window.__aiExaminerVerifiedResult = {
+        ...v,
+        confidence: Math.round((v.confidence || 0.6) * 100),
+        reasons: [
+          v.reason || 'Submitted for staff review',
+          ...((v.concerns || []).map(c => `Note: ${c}`))
+        ].filter(Boolean)
+      };
+
+      const fakeEvt = {
+        preventDefault: () => {}
+      };
+      await handlePaperUploadSubmit(fakeEvt);
     }
 
     // High-Performance In-Browser Image Optimization (WebP/JPEG Adaptive Compression)

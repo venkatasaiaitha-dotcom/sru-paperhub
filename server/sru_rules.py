@@ -86,6 +86,11 @@ class SRUValidationConfig:
             "SRU",
             "SR University Warangal",
             "Ananthasagar",
+            "SR Engineering College",
+            "SREC",
+            "SR Group",
+            "School of Computer Science & AI",
+            "School of Engineering",
         ]
     )
     expected_core_fields: List[str] = field(
@@ -111,8 +116,8 @@ class SRUValidationConfig:
     )
     known_regulations_regex: str = r"^R\d{2}$"
     course_code_regex: str = r"^[A-Z0-9]{4,16}$"
-    approve_threshold: float = 0.75
-    reject_threshold: float = 0.40
+    approve_threshold: float = 0.65
+    reject_threshold: float = 0.35
     timeout_seconds: int = 45
     max_retries: int = 2
     max_upload_mb: int = 15
@@ -239,10 +244,16 @@ def matches_sru_institution(name: str, config: SRUValidationConfig) -> bool:
     cleaned = re.sub(r"[^A-Z0-9\s]", " ", (name or "").upper()).strip()
     if not cleaned:
         return False
-    if "SR UNIVERSITY" in cleaned or "S R UNIVERSITY" in cleaned or cleaned == "SRU":
+    if (
+        "SR UNIVERSITY" in cleaned
+        or "S R UNIVERSITY" in cleaned
+        or cleaned == "SRU"
+        or "SR ENGINEERING COLLEGE" in cleaned
+        or "SREC" in cleaned
+    ):
         return True
     for alias in config.university_aliases:
         alias_clean = re.sub(r"[^A-Z0-9\s]", " ", alias.upper()).strip()
-        if alias_clean and alias_clean in cleaned and len(alias_clean) >= 4:
+        if alias_clean and alias_clean in cleaned and len(alias_clean) >= 3:
             return True
     return False

@@ -594,22 +594,18 @@ def score_and_decide(
         doc_code = meta.get("course_code") or meta.get("subject_code") or ""
         code_mismatch = _is_clean_metadata_mismatch(str(form_code), doc_code, "course_code")
         if code_mismatch:
-            if "does not match" in code_mismatch:
-                meta_contradictions += 1
-                issues.append({"severity": "HIGH", "issue": code_mismatch})
-                evidence.append(
-                    {"category": "metadata_consistency", "status": "CONTRADICTORY", "observation": code_mismatch}
-                )
-            else:
-                issues.append({"severity": "LOW", "issue": code_mismatch})
+            # Informational only: student dropdown defaults or shorthand must not reject genuine papers
+            issues.append({"severity": "LOW", "issue": code_mismatch})
+            evidence.append(
+                {"category": "metadata_alignment", "status": "PRESENT", "observation": f"Paper course code '{doc_code}' is prioritized over form input '{form_code}'."}
+            )
 
         form_reg = user_metadata.get("regulation") or ""
         reg_mismatch = _is_clean_metadata_mismatch(str(form_reg), meta.get("regulation", ""), "regulation")
         if reg_mismatch:
-            meta_contradictions += 1
-            issues.append({"severity": "HIGH", "issue": reg_mismatch})
+            issues.append({"severity": "LOW", "issue": reg_mismatch})
             evidence.append(
-                {"category": "regulation_consistency", "status": "CONTRADICTORY", "observation": reg_mismatch}
+                {"category": "regulation_alignment", "status": "PRESENT", "observation": f"Paper regulation '{meta.get('regulation')}' is prioritized over form input '{form_reg}'."}
             )
 
     # 1. Document Identity Score
@@ -746,6 +742,18 @@ def score_and_decide(
     final_decision: str
     final_reason = ai_result.get("reason") or ""
 
+    is_genuine_sru_exam = (
+        is_exam
+        and doc_type == "question_paper"
+        and inst_status in ("PRESENT", "UNCERTAIN")
+        and (is_sru_name or inst_status == "PRESENT")
+        and not has_other_university
+        and not clear_non_paper
+        and not poor_quality_flag
+        and len(suspicious_signals) == 0
+        and high_issues == 0
+    )
+
     if has_other_university or (clear_non_paper and not poor_quality_flag):
         final_decision = "REJECT"
     elif has_anti_bypass and (final_score < config.approve_threshold or contradictory_evidence_count >= 1):
@@ -758,20 +766,26 @@ def score_and_decide(
                 f"{POOR_QUALITY_MESSAGE} ({extra})" if extra else POOR_QUALITY_MESSAGE
             )
     elif high_issues > 0 or contradictory_evidence_count > 0:
-        if final_score < config.reject_threshold or meta_contradictions >= 2:
+        if final_score < config.reject_threshold:
             final_decision = "REJECT"
+        else:
+            final_decision = "HUMAN_REVIEW"
+    elif is_genuine_sru_exam and (
+        final_score >= config.approve_threshold
+        or ai_result.get("decision") == "APPROVE"
+        or final_score >= 0.58
+    ):
+        final_decision = "APPROVE"
+    elif final_score >= config.approve_threshold and is_exam and inst_status in ("PRESENT", "UNCERTAIN") and (is_sru_name or inst_status == "PRESENT"):
+        # Require at least SR University institution evidence and zero suspicious bypass flags
+        if inst_status == "PRESENT" and len(suspicious_signals) == 0 and high_issues == 0 and contradictory_evidence_count == 0:
+            final_decision = "APPROVE"
         else:
             final_decision = "HUMAN_REVIEW"
     elif ai_result.get("decision") == "REJECT" and final_score < config.approve_threshold:
         final_decision = "REJECT"
     elif ai_result.get("decision") == "HUMAN_REVIEW":
         final_decision = "HUMAN_REVIEW" if final_score >= config.reject_threshold else "REJECT"
-    elif final_score >= config.approve_threshold and is_exam and inst_status in ("PRESENT", "UNCERTAIN") and (is_sru_name or inst_status == "PRESENT"):
-        # Require at least SR University institution evidence and zero suspicious bypass flags
-        if inst_status == "PRESENT" and len(suspicious_signals) == 0:
-            final_decision = "APPROVE"
-        else:
-            final_decision = "HUMAN_REVIEW"
     elif final_score < config.reject_threshold:
         final_decision = "REJECT"
     else:
@@ -1113,6 +1127,16 @@ class AIExaminerService:
         verification["model"] = model_used
         verification["cached"] = False
         verification["duration_ms"] = elapsed
+
+        logger.info(
+            "VERIFY RESULT [%s]: decision=%s score=%.3f model=%s reason='%s' issues=%s",
+            request_id,
+            verification["decision"],
+            verification["score"],
+            model_used,
+            verification.get("reason", "")[:120],
+            [i.get("issue") for i in verification.get("issues", [])][:3],
+        )
 
         self._set_cached_verdict(cache_key, verification)
         self._log_audit(

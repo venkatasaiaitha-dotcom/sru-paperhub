@@ -40,14 +40,14 @@ def build_examiner_system_instruction(
     }
     if cleaned_meta:
         meta_lines = [
-            "SUBMITTED UPLOAD METADATA (Verify consistency against actual paper content; highlight mismatches as CONTRADICTORY unless clearly benign formatting variance):"
+            "OPTIONAL STUDENT-ENTERED FORM DETAILS (Use only as contextual hints; prioritize actual document visual and textual evidence. If the document itself is a genuine SR University question paper, do NOT reject it merely because user-selected form values differ from the printed text — extract the true metadata directly from the document):"
         ]
         for key, value in sorted(cleaned_meta.items()):
             meta_lines.append(f"- {key}: {value}")
         user_context = "\n".join(meta_lines)
     else:
         user_context = (
-            "SUBMITTED UPLOAD METADATA: None provided separately; evaluate strictly from the document itself."
+            "SUBMITTED UPLOAD METADATA: None provided; evaluate strictly from the document itself."
         )
 
     return template.format(

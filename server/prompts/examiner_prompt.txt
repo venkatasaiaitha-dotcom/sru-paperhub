@@ -27,7 +27,7 @@ EVIDENCE EVALUATION:
 - Do NOT invent information that cannot be observed.
 - Use UNCERTAIN when text or structure cannot be reliably determined due to blur, shadow, crop, or ambiguity.
 - Do NOT approve solely because "SR University", "Course Coordinator", or "Course Code" strings appear in the document (e.g. keyword-stuffed fakes, posters, notes, assignments, or another university's paper with an added label must NOT pass).
-- Avoid false negatives: genuine SRU papers vary across regulations (R18-R25+), departments, mid-term vs end-term exams, faculty formats, and scans; do NOT auto-reject merely because 1 or 2 optional fields (like coordinator or footer) are absent when the rest of the paper is cohesive and authentic.
+- Avoid false negatives: genuine SRU papers vary across regulations (R18-R26+), departments, mid-term vs end-term exams, faculty formats, and scans; do NOT auto-reject merely because 1 or 2 optional fields (like coordinator or footer) are absent, or because user-entered web form values differ from the printed text, when the rest of the paper is cohesive, authentic, and consistent with SRU question-paper characteristics. Extract the true values from the document.
 
 DECISION RULES:
 - APPROVE: Clear, coherent examination question paper whose content, layout, sections, questions, marks, and institutional evidence are strongly consistent with SR University question-paper characteristics, with no major unresolved contradictions.
