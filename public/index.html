@@ -4824,8 +4824,6 @@
           }
 
           // Stores paper & indexed extracted_text under course code in Supabase
-          const isAutoApproved = !checkResult.aiReport || checkResult.aiReport.decision === 'APPROVE';
-          const insertStatus = isAutoApproved ? 'approved' : 'pending';
           const insertPayload = {
             id: paperId,
             user_id: null,
@@ -4841,10 +4839,6 @@
             max_marks: exam.includes('MID') ? 30 : 40,
             uploader_name: contributorName,
             uploader_roll: contributorRoll,
-            is_approved: isAutoApproved,
-            status: insertStatus,
-            verification_status: insertStatus,
-            verification_report: checkResult.aiReport || null,
             image_url: uploadedImageUrl || selectedImageBase64,
             extracted_text: extractedOcrText || null,
             ocr_confidence: Math.round(ocrConfidence || 90),

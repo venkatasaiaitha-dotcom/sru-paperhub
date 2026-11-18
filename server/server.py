@@ -384,34 +384,35 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
                 self._send_json({"success": False, "error": "Paper not found"}, status=404)
             return
 
-        # Paper Upload (Public Submission - Enters Pending Review)
-        elif path == "/api/upload":
+        # Paper Upload (Public Submission or Client Verified Save)
+        elif path in ("/api/upload", "/api/papers"):
             client_ip = self.client_address[0]
-            allowed, wait_sec = check_rate_limit(client_ip, UPLOAD_RATE_LIMITS, max_requests=5, window_sec=600)
+            allowed, wait_sec = check_rate_limit(client_ip, UPLOAD_RATE_LIMITS, max_requests=10, window_sec=600)
             if not allowed:
                 self._send_json({"success": False, "error": f"Rate limit reached. Please wait {wait_sec} seconds before uploading."}, status=429)
                 return
 
-            code = data.get("subjectCode", "SUB101").upper().strip()
-            name = data.get("subjectName", "Untitled Subject").strip()
             branch = data.get("branch", "CSE")
+            paper_id = data.get("id") or f"sru_{branch.lower()}_{secrets.token_hex(6)}"
+            code = (data.get("subject_code") or data.get("subjectCode") or "SUB101").upper().strip()
+            name = (data.get("subject_name") or data.get("subjectName") or "Untitled Subject").strip()
             sem = int(data.get("semester", 1))
-            exam = data.get("examType", "MID_1")
+            exam = data.get("exam_type") or data.get("examType", "MID_1")
             reg = data.get("regulation", "R22")
-            year = data.get("academicYear", "2025-2026")
-            uploader_name = data.get("uploaderName", "Student Contributor")
-            uploader_roll = data.get("uploaderRollNo", "Anonymous")
-            uploader_email = data.get("uploaderEmail", "")
+            year = data.get("academic_year") or data.get("academicYear", "2025-2026")
+            uploader_name = data.get("uploader_name") or data.get("uploaderName", "Student Contributor")
+            uploader_roll = data.get("uploader_roll") or data.get("uploaderRollNo", "Anonymous")
+            uploader_email = data.get("uploader_email") or data.get("uploaderEmail", "")
             image_data = data.get("imageData", "")
+            image_url = data.get("image_url") or data.get("imageUrl", "")
 
             # File size limit: 15MB
-            if len(image_data) * 0.75 > 15 * 1024 * 1024:
+            if image_data and len(image_data) * 0.75 > 15 * 1024 * 1024:
                 self._send_json({"success": False, "error": "File size exceeds maximum 15MB limit."}, status=413)
                 return
 
-            # Strict file validation - NO SVG, NO executables
-            image_url = ""
-            if image_data.startswith("data:"):
+            # File upload extraction if base64 data provided
+            if not image_url and image_data.startswith("data:"):
                 try:
                     header, encoded = image_data.split(",", 1)
                     mime = header.split(";")[0].replace("data:", "").lower()
@@ -439,80 +440,56 @@ class PaperHubHandler(http.server.SimpleHTTPRequestHandler):
                 "SUPPLY": "Supplementary Exam"
             }
 
-            new_id = f"sru_{branch.lower()}_{secrets.token_hex(6)}"
-            # Run AI verification if report not provided by client
-            verification_rep = data.get("verificationReport")
-            existing_papers_list = load_json(DATA_FILE, [])
-            if not verification_rep:
-                raw_bytes = base64.b64decode(encoded) if image_data.startswith("data:") else b""
-                verification_rep = verifier.verify(
-                    file_bytes=raw_bytes,
-                    filename=filename if 'filename' in locals() else "paper.webp",
-                    mime_type=mime if 'mime' in locals() else "image/webp",
-                    student_selection={
-                        "branch": branch,
-                        "semester": sem,
-                        "regulation": reg,
-                        "academicYear": year,
-                        "subjectCode": code,
-                        "subjectName": name,
-                        "examType": exam
-                    },
-                    client_ocr_text=data.get("extractedText", ""),
-                    ocr_confidence=float(data.get("ocrConfidence", 0)),
-                    existing_papers=existing_papers_list
-                )
-
-            # If duplicate detected from past data:
-            if verification_rep.get("is_duplicate"):
-                self._send_json({"success": False, "error": verification_rep["reasons"][0], "is_duplicate": True}, status=400)
-                return
-
-            # If not a valid SR University paper:
-            decision = verification_rep.get("decision", "APPROVED")
-            if decision == "REJECTED":
-                self._send_json({"success": False, "error": "This document is not a valid SR University question paper.", "reasons": verification_rep.get("reasons", [])}, status=400)
-                return
-
-            is_approved = (decision == "APPROVED")
-            status = "approved" if is_approved else "pending" 
+            is_approved = data.get("is_approved", True)
+            status = data.get("status", "approved" if is_approved else "pending")
 
             new_paper = {
-                "id": new_id,
+                "id": paper_id,
                 "subjectCode": code,
                 "subjectName": name,
+                "subject_code": code,
+                "subject_name": name,
                 "branch": branch,
                 "semester": sem,
                 "examType": exam,
+                "exam_type": exam,
                 "examTypeLabel": exam_labels.get(exam, exam),
+                "exam_type_label": exam_labels.get(exam, exam),
                 "regulation": reg,
                 "academicYear": year,
-                "duration": "90 Mins" if "MID" in exam else "3 Hours",
-                "maxMarks": 30 if "MID" in exam else 60,
+                "academic_year": year,
+                "duration": data.get("duration") or ("90 Mins" if "MID" in exam else "3 Hours"),
+                "maxMarks": data.get("max_marks") or (30 if "MID" in exam else 60),
+                "max_marks": data.get("max_marks") or (30 if "MID" in exam else 60),
                 "school": "School of Computer Science & AI" if branch in ["CSE", "AIML", "AIDS"] else "School of Engineering",
                 "uploaderName": uploader_name,
+                "uploader_name": uploader_name,
                 "uploaderRollNo": uploader_roll,
+                "uploader_roll": uploader_roll,
                 "uploaderEmail": uploader_email,
+                "uploader_email": uploader_email,
                 "uploadDate": "Just now",
                 "imageUrl": image_url,
+                "image_url": image_url,
                 "downloadCount": 0,
+                "download_count": 0,
                 "is_approved": is_approved,
                 "status": status,
-                "extracted_text": verification_rep.get("extracted_text", "") or data.get("extractedText", ""),
-                "extractedText": verification_rep.get("extracted_text", "") or data.get("extractedText", ""),
-                "verification_report": verification_rep,
-                "course_coordinator": verification_rep.get("course_coordinator_name", "UNVERIFIED"),
+                "extracted_text": data.get("extracted_text") or data.get("extractedText", ""),
+                "extractedText": data.get("extracted_text") or data.get("extractedText", ""),
+                "verification_report": data.get("verification_report") or data.get("verificationReport") or {},
                 "created_at": int(time.time())
             }
 
             papers = load_papers()
+            papers = [p for p in papers if p.get("id") != paper_id]
             papers.insert(0, new_paper)
             save_papers(papers)
 
-            print(f"Successfully saved new submission (pending review): {code} - {name} ({branch}).")
+            print(f"Successfully saved paper: {code} - {name} ({branch}).")
             self._send_json({
                 "success": True, 
-                "message": "Your question paper has been submitted successfully and is awaiting review.",
+                "message": "Paper saved successfully.",
                 "paper": new_paper
             })
             return
