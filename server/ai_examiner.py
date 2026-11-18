@@ -56,7 +56,7 @@ if not logger.handlers:
     logger.setLevel(logging.INFO)
 
 
-DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"
+DEFAULT_GEMINI_MODEL = "gemini-3.5-flash-lite"
 ASSESSMENT_APPROVED_TEXT = (
     "The document is consistent with expected SRU question-paper characteristics."
 )
@@ -449,9 +449,14 @@ class GeminiExaminerClient:
         doc: ProcessedDocument,
         user_metadata: Optional[Dict[str, Any]] = None,
     ) -> Tuple[Dict[str, Any], str]:
-        """Send preprocessed visual pages and context to Gemini Interactions API with retries."""
+        """Send preprocessed visual pages and context to Gemini Interactions API with retries and fallback."""
         client = self._get_client()
-        model_name = self.get_model_name()
+        primary_model = self.get_model_name()
+        candidates: List[str] = [primary_model]
+        for fallback in ("gemini-3.5-flash-lite", "gemini-3.8-flash"):
+            if fallback not in candidates:
+                candidates.append(fallback)
+
         profiles = load_reference_profiles(self.config.reference_profiles_dir)
         system_instruction = build_examiner_system_instruction(
             config=self.config,
@@ -476,36 +481,54 @@ class GeminiExaminerClient:
         last_category = "AI_UNAVAILABLE"
         attempts = self.config.max_retries + 1
 
-        for attempt in range(attempts):
-            try:
-                interaction = client.interactions.create(
-                    model=model_name,
-                    system_instruction=system_instruction,
-                    input=input_blocks,
-                    response_format={
-                        "type": "text",
-                        "mime_type": "application/json",
-                        "schema": EXAMINER_JSON_SCHEMA,
-                    },
-                    generation_config={
-                        "temperature": 0.1,
-                        "max_output_tokens": 2500,
-                    },
-                    store=False,
-                    timeout=float(self.config.timeout_seconds),
-                )
-                raw_text = _extract_interaction_text(interaction)
-                normalized = _parse_and_normalize_ai_json(raw_text)
-                return normalized, model_name
-            except GeminiServiceUnavailableError:
-                raise
-            except Exception as exc:
-                retryable, category = self._classify_exception(exc)
-                last_category = category
-                if not retryable or attempt >= attempts - 1:
-                    break
-                delay = min(6.0, 0.8 * (2 ** attempt) + random.uniform(0.05, 0.35))
-                time.sleep(delay)
+        for model_idx, candidate_model in enumerate(candidates):
+            for attempt in range(attempts):
+                try:
+                    interaction = client.interactions.create(
+                        model=candidate_model,
+                        system_instruction=system_instruction,
+                        input=input_blocks,
+                        response_format={
+                            "type": "text",
+                            "mime_type": "application/json",
+                            "schema": EXAMINER_JSON_SCHEMA,
+                        },
+                        generation_config={
+                            "temperature": 0.1,
+                            "max_output_tokens": 2500,
+                        },
+                        store=False,
+                        timeout=float(self.config.timeout_seconds),
+                    )
+                    raw_text = _extract_interaction_text(interaction)
+                    normalized = _parse_and_normalize_ai_json(raw_text)
+                    return normalized, candidate_model
+                except GeminiServiceUnavailableError:
+                    raise
+                except Exception as exc:
+                    retryable, category = self._classify_exception(exc)
+                    last_category = category
+                    logger.warning(
+                        "Gemini interaction attempt %d/%d on '%s' failed: %s (%s)",
+                        attempt + 1,
+                        attempts,
+                        candidate_model,
+                        category,
+                        type(exc).__name__,
+                    )
+                    if not retryable:
+                        raise GeminiServiceUnavailableError(
+                            AI_UNAVAILABLE_MESSAGE, error_category=last_category
+                        )
+                    if attempt < attempts - 1:
+                        delay = min(4.0, 0.6 * (2 ** attempt) + random.uniform(0.05, 0.25))
+                        time.sleep(delay)
+                    else:
+                        if model_idx < len(candidates) - 1:
+                            logger.info(
+                                "Switching to fallback model '%s'...",
+                                candidates[model_idx + 1],
+                            )
 
         raise GeminiServiceUnavailableError(
             AI_UNAVAILABLE_MESSAGE, error_category=last_category

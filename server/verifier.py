@@ -482,14 +482,17 @@ class VerificationEngine:
                     "OTHER": "Unrelated Non-Examination Document"
                 }
                 label = type_labels.get(doc_type, doc_type)
+                rej_reasons = [
+                    "This document is not a valid SR University question paper.",
+                    f"Document classified by AI as prohibited non-examination material: '{label}'."
+                ]
+                if not conforms_a4:
+                    rej_reasons.append(f"Document geometry ({aspect_ratio:.2f}) does not match standard A4 paper layout.")
                 return {
                     "decision": "REJECTED",
                     "is_duplicate": False,
                     "confidence": gemini_result.get("confidence", 85),
-                    "reasons": [
-                        "This document is not a valid SR University question paper.",
-                        f"Document classified by AI as prohibited non-examination material: '{label}'."
-                    ],
+                    "reasons": rej_reasons,
                     "extracted_fields": {
                         "university_name": uni_name,
                         "course_code": extracted_code
